@@ -6,8 +6,7 @@ import asyncio
 from urllib.parse import quote, urljoin
 
 from ..core.config import ScanConfig
-from ..core.models import Vulnerability, Severity
-
+from ..core.models import Severity, Vulnerability
 
 VULN_CHECKS = [
     {
@@ -132,14 +131,14 @@ class VulnerabilityScanner:
 
         return vulns
 
-    async def _check_vulns(self, url: str, session, sem: asyncio.Semaphore, vulns: list) -> None:
+    async def _check_vulns(self, url: str, session: object, sem: asyncio.Semaphore, vulns: list[Vulnerability]) -> None:
         tasks = []
         for check in VULN_CHECKS:
             for payload in check["payloads"]:
-                tasks.append(self._test_payload(url, session, sem, check, payload))
+                tasks.append(self._test_payload(url, session, sem, check, payload, vulns))
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _test_payload(self, url: str, session, sem, check: dict, payload: str) -> None:
+    async def _test_payload(self, url: str, session: object, sem: asyncio.Semaphore, check: dict[str, object], payload: str, vulns: list[Vulnerability]) -> None:
         async with sem:
             full_path = check["path"].format(payload=quote(payload, safe=""))
             target = urljoin(url, full_path)
@@ -186,7 +185,7 @@ class VulnerabilityScanner:
                         cwe=check.get("cwe"),
                     ))
 
-    async def _check_sensitive(self, url: str, session, sem, vulns: list) -> None:
+    async def _check_sensitive(self, url: str, session: object, sem: asyncio.Semaphore, vulns: list[Vulnerability]) -> None:
         async def check_path(path: str) -> None:
             async with sem:
                 target = urljoin(url, path)
@@ -229,7 +228,7 @@ class VulnerabilityScanner:
         tasks = [check_path(p) for p in SENSITIVE_PATHS]
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _check_admin(self, url: str, session, sem, vulns: list) -> None:
+    async def _check_admin(self, url: str, session: object, sem: asyncio.Semaphore, vulns: list[Vulnerability]) -> None:
         async def check_admin(path: str) -> None:
             async with sem:
                 target = urljoin(url, path)
@@ -252,7 +251,7 @@ class VulnerabilityScanner:
         tasks = [check_admin(p) for p in ADMIN_PATHS]
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _check_backups(self, url: str, session, sem, vulns: list) -> None:
+    async def _check_backups(self, url: str, session: object, sem: asyncio.Semaphore, vulns: list[Vulnerability]) -> None:
         targets = ["/config", "/database", "/db", "/backup", "/dump", "/www", "/site", "/app"]
         tasks = []
 

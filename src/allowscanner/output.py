@@ -3,20 +3,19 @@
 from __future__ import annotations
 
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.table import Table
 from rich.text import Text
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 from rich.tree import Tree
 
 from .core.models import ScanResult, Severity
 
-
 BANNER = r"""[bold cyan]
-    ___    __                _____                                  
+    ___    __                _____
    /   |  / /___ _____  ____/ / (_)__  _____
   / /| | / / __ `/ __ \/ __  / / / _ \/ ___/
- / ___ |/ / /_/ / / / / /_/ / / /  __/ /    
+ / ___ |/ / /_/ / / / / /_/ / / /  __/ /
 /_/  |_/_/\__,_/_/ /_/\__,_/_/_/\___/_/     [green]v2.0[/]
 [/bold cyan]
 [dim]Advanced Web Vulnerability Scanner[/dim]
@@ -48,13 +47,13 @@ class TerminalOutput:
         score_color = "green" if score >= 80 else "yellow" if score >= 50 else "red"
 
         summary = Text()
-        summary.append(f"  Target: ", style="bold")
+        summary.append("  Target: ", style="bold")
         summary.append(f"{result.target_url}\n")
-        summary.append(f"  Domain: ", style="bold")
+        summary.append("  Domain: ", style="bold")
         summary.append(f"{result.base_domain}\n")
-        summary.append(f"  Duration: ", style="bold")
+        summary.append("  Duration: ", style="bold")
         summary.append(f"{result.duration_seconds:.1f}s\n")
-        summary.append(f"  Score: ", style="bold")
+        summary.append("  Score: ", style="bold")
         summary.append(f"{score}/100\n", style=f"bold {score_color}")
 
         self.console.print(Panel(summary, title="📊 Scan Summary", border_style="cyan"))
@@ -87,7 +86,7 @@ class TerminalOutput:
             return
 
         # Severity counts
-        counts = {}
+        counts: dict[str, int] = {}
         for v in vulns:
             counts[v.severity] = counts.get(v.severity, 0) + 1
 

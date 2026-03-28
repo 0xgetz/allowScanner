@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any
 
 
 class Severity(Enum):
@@ -36,16 +36,16 @@ class Vulnerability:
     severity: Severity
     url: str
     description: str = ""
-    payload: Optional[str] = None
+    payload: str | None = None
     recommendation: str = ""
-    cwe: Optional[str] = None
-    cvss: Optional[float] = None
+    cwe: str | None = None
+    cvss: float | None = None
 
 
 @dataclass
 class Technology:
     name: str
-    version: Optional[str] = None
+    version: str | None = None
     category: str = ""
 
 
@@ -53,7 +53,7 @@ class Technology:
 class SecurityHeader:
     name: str
     present: bool
-    value: Optional[str] = None
+    value: str | None = None
     recommendation: str = ""
 
 
@@ -65,7 +65,7 @@ class CertificateInfo:
     not_after: str = ""
     protocol: str = ""
     cipher: str = ""
-    days_remaining: Optional[int] = None
+    days_remaining: int | None = None
     san: list[str] = field(default_factory=list)
 
 
@@ -74,16 +74,16 @@ class ScanResult:
     target_url: str
     base_domain: str
     scan_start: datetime = field(default_factory=datetime.now)
-    scan_end: Optional[datetime] = None
+    scan_end: datetime | None = None
     duration_seconds: float = 0.0
     vulnerabilities: list[Vulnerability] = field(default_factory=list)
     technologies: list[Technology] = field(default_factory=list)
     security_headers: list[SecurityHeader] = field(default_factory=list)
-    certificate: Optional[CertificateInfo] = None
-    dns_records: dict = field(default_factory=dict)
+    certificate: CertificateInfo | None = None
+    dns_records: dict[str, Any] = field(default_factory=dict)
     subdomains: list[str] = field(default_factory=list)
     open_ports: list[int] = field(default_factory=list)
-    response_headers: dict = field(default_factory=dict)
+    response_headers: dict[str, str] = field(default_factory=dict)
 
     @property
     def critical_count(self) -> int:

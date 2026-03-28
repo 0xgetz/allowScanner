@@ -1,7 +1,12 @@
-from .models import ScanResult, Vulnerability, Severity, Technology, SecurityHeader, CertificateInfo
 from .config import ScanConfig
+from .models import CertificateInfo, ScanResult, SecurityHeader, Severity, Technology, Vulnerability
 
 __all__ = [
-    "ScanResult", "Vulnerability", "Severity", "Technology",
-    "SecurityHeader", "CertificateInfo", "ScanConfig",
+    "CertificateInfo",
+    "ScanConfig",
+    "ScanResult",
+    "SecurityHeader",
+    "Severity",
+    "Technology",
+    "Vulnerability",
 ]

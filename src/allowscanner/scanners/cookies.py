@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from ..core.models import Vulnerability, Severity
+from ..core.models import Severity, Vulnerability
 
 
 class CookieScanner:
     """Check cookie security attributes."""
 
-    async def scan(self, url: str, session) -> list[Vulnerability]:
+    async def scan(self, url: str, session: object) -> list[Vulnerability]:
         vulns: list[Vulnerability] = []
 
         resp, _ = await session.get(url)

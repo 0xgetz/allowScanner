@@ -1,8 +1,7 @@
 """Tests for AllowScanner."""
 
-import pytest
-from allowscanner.core.models import Severity, Vulnerability, ScanResult
 from allowscanner.core.config import ScanConfig
+from allowscanner.core.models import ScanResult, Severity, Vulnerability
 
 
 class TestModels:

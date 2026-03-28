@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 from enum import Enum
+from typing import Any
 
-from .core.models import ScanResult
+from ..core.models import ScanResult
 
 
 class _Encoder(json.JSONEncoder):
-    def default(self, o):
+    def default(self, o: Any) -> Any:
         if isinstance(o, Enum):
             return o.value
         return super().default(o)

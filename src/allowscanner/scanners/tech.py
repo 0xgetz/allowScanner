@@ -6,7 +6,6 @@ import re
 
 from ..core.models import Technology
 
-
 TECH_SIGNATURES = {
     "WordPress": {
         "patterns": ["wp-content", "wp-includes", "wordpress", "wp-emoji"],
@@ -139,7 +138,7 @@ TECH_SIGNATURES = {
 class TechScanner:
     """Detect web technologies, frameworks, and servers."""
 
-    async def scan(self, url: str, session) -> list[Technology]:
+    async def scan(self, url: str, session: object) -> list[Technology]:
         technologies: list[Technology] = []
         seen: set[str] = set()
 
@@ -171,7 +170,7 @@ class TechScanner:
                         if h_val.strip().lower() in actual.lower():
                             found = True
                             break
-                    elif header_sig.lower() in [h.lower() for h in response_headers.keys()]:
+                    elif header_sig.lower() in [h.lower() for h in response_headers]:
                         found = True
                         break
 

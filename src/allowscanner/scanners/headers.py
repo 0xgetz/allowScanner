@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from ..core.models import Vulnerability, Severity, SecurityHeader
-
+from ..core.models import SecurityHeader, Severity, Vulnerability
 
 EXPECTED_HEADERS = {
     "Strict-Transport-Security": {
@@ -53,8 +52,7 @@ EXPECTED_HEADERS = {
 class HeaderScanner:
     """Analyze HTTP security headers."""
 
-    async def scan(self, url: str, session) -> tuple[list[SecurityHeader], list[Vulnerability]]:
-        from .http import HttpClient
+    async def scan(self, url: str, session: object) -> tuple[list[SecurityHeader], list[Vulnerability]]:
 
         vulns: list[Vulnerability] = []
         headers_found: list[SecurityHeader] = []
@@ -65,7 +63,7 @@ class HeaderScanner:
 
         response_headers = resp.headers
 
-        for header_name, info in EXPECTED_HEADERS.items():
+        for header_name, info in EXPECTED_HEADERS.items():  # info: dict[str, Any]
             value = response_headers.get(header_name)
             if value:
                 sh = SecurityHeader(name=header_name, present=True, value=value)

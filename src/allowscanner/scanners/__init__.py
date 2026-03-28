@@ -1,15 +1,23 @@
-from .http import HttpScanner
-from .ssl import SSLScanner
+"""Scanner module exports."""
+
+from .cookies import CookieScanner
+from .cors import CORSScanner
 from .dns import DNSScanner
-from .vuln import VulnerabilityScanner
 from .headers import HeaderScanner
+from .http import HttpClient
+from .ssl import SSLScanner
 from .subdomain import SubdomainScanner
 from .tech import TechScanner
-from .cors import CORSScanner
-from .cookies import CookieScanner
+from .vuln import VulnerabilityScanner
 
 __all__ = [
-    "HttpScanner", "SSLScanner", "DNSScanner", "VulnerabilityScanner",
-    "HeaderScanner", "SubdomainScanner", "TechScanner", "CORSScanner",
+    "CORSScanner",
     "CookieScanner",
+    "DNSScanner",
+    "HeaderScanner",
+    "HttpClient",
+    "SSLScanner",
+    "SubdomainScanner",
+    "TechScanner",
+    "VulnerabilityScanner",
 ]
