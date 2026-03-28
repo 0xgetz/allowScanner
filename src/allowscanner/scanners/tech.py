@@ -96,11 +96,11 @@ TECH_SIGNATURES = {
         "category": "Runtime",
     },
     "Nginx": {
-        "headers": ["server: nginx"],
+        "headers": ["server: nginx", "server:nginx"],
         "category": "Web Server",
     },
     "Apache": {
-        "headers": ["server: apache"],
+        "headers": ["server: apache", "server:apache"],
         "category": "Web Server",
     },
     "Cloudflare": {
@@ -149,6 +149,11 @@ class TechScanner:
         content_lower = content.lower()
         response_headers = resp.headers
 
+        # Create a lowercase version of headers for case-insensitive matching
+        headers_lower = {}
+        for key, value in response_headers.items():
+            headers_lower[key.lower()] = value.lower()
+
         for tech_name, sig in TECH_SIGNATURES.items():
             if tech_name in seen:
                 continue
@@ -161,18 +166,22 @@ class TechScanner:
                     found = True
                     break
 
-            # Check response headers
+            # Check response headers (case-insensitive)
             if not found:
                 for header_sig in sig.get("headers", []):
                     if ":" in header_sig:
                         h_name, h_val = header_sig.split(":", 1)
-                        actual = response_headers.get(h_name.strip(), "")
-                        if h_val.strip().lower() in actual.lower():
+                        h_name_lower = h_name.strip().lower()
+                        h_val_lower = h_val.strip().lower()
+                        # Check if header exists and contains the expected value
+                        if h_name_lower in headers_lower and h_val_lower in headers_lower[h_name_lower]:
                             found = True
                             break
-                    elif header_sig.lower() in [h.lower() for h in response_headers]:
-                        found = True
-                        break
+                    else:
+                        # Just check if header name exists
+                        if header_sig.lower() in headers_lower:
+                            found = True
+                            break
 
             # Check cookies
             if not found:

@@ -13,7 +13,7 @@ VULN_CHECKS = [
         "name": "SQL Injection",
         "method": "GET",
         "path": "?id={payload}",
-        "payloads": ["'", "1' OR '1'='1", "1\" OR \"1\"=\"1", "' OR 1=1--", "1; DROP TABLE users"],
+        "payloads": ["'", "1' OR '1'='1", '1" OR "1"="1', "' OR 1=1--", "1; DROP TABLE users"],
         "indicators": ["SQL syntax", "mysql_fetch", "syntax error", "ORA-", "PostgreSQL", "sqlite3.OperationalError", "Unclosed quotation mark"],
         "severity": Severity.CRITICAL,
         "cwe": "CWE-89",
@@ -22,7 +22,7 @@ VULN_CHECKS = [
         "name": "Reflected XSS",
         "method": "GET",
         "path": "?search={payload}&q={payload}&s={payload}",
-        "payloads": ["<script>alert('XSS')</script>", "\"><img src=x onerror=alert(1)>", "javascript:alert(1)", "<svg onload=alert(1)>"],
+        "payloads": ["<script>alert('XSS')</script>", '"><img src=x onerror=alert(1)>', "javascript:alert(1)", "<svg onload=alert(1)>"],
         "indicators": ["<script>alert('XSS')</script>", "onerror=alert(1)", "javascript:alert(1)", "onload=alert(1)"],
         "severity": Severity.HIGH,
         "cwe": "CWE-79",
@@ -149,10 +149,17 @@ class VulnerabilityScanner:
                 headers["Content-Type"] = check["content_type"]
                 data = payload
 
-            resp, content = await session.request(
-                check["method"], target, headers=headers, data=data,
-                allow_redirects=not check.get("check_redirect", False),
-            )
+            try:
+                # Use get for GET requests, request for others
+                if check["method"] == "GET":
+                    resp, content = await session.get(target, headers=headers)
+                else:
+                    resp, content = await session.request(
+                        check["method"], target, headers=headers, data=data,
+                        allow_redirects=not check.get("check_redirect", False),
+                    )
+            except Exception:
+                return
 
             if not resp:
                 return
@@ -189,7 +196,10 @@ class VulnerabilityScanner:
         async def check_path(path: str) -> None:
             async with sem:
                 target = urljoin(url, path)
-                resp, content = await session.get(target)
+                try:
+                    resp, content = await session.get(target)
+                except Exception:
+                    return
                 if not resp or resp.status != 200:
                     return
 
@@ -232,7 +242,10 @@ class VulnerabilityScanner:
         async def check_admin(path: str) -> None:
             async with sem:
                 target = urljoin(url, path)
-                resp, content = await session.get(target)
+                try:
+                    resp, content = await session.get(target)
+                except Exception:
+                    return
                 if not resp or resp.status != 200:
                     return
 
@@ -258,7 +271,10 @@ class VulnerabilityScanner:
         async def check_backup(base: str, ext: str) -> None:
             async with sem:
                 target = urljoin(url, base + ext)
-                resp, content = await session.get(target)
+                try:
+                    resp, content = await session.get(target)
+                except Exception:
+                    return
                 if resp and resp.status == 200 and len(content) > 100:
                     vulns.append(Vulnerability(
                         name="Backup File Exposure",

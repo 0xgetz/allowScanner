@@ -416,13 +416,14 @@ class TestCompleteHeadersScan:
             "X-Frame-Options": "DENY",
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "Permissions-Policy": "camera=(), microphone=()",
+            "X-XSS-Protection": "0",
         })
         session = MockSession(response=response)
 
         headers_found, vulns = await scanner.scan("https://example.com", session)
 
         # All security headers should be found
-        assert len(headers_found) >= 6
+        assert len(headers_found) >= 7
 
         # No missing header vulnerabilities
         missing_vulns = [v for v in vulns if "Missing" in v.name]

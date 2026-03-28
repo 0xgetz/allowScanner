@@ -20,19 +20,36 @@ class MockCookie:
         return self._attributes.get(attr.lower())
 
 
+class MockHeaders:
+    """Mock aiohttp CIMultiDictProxy for headers."""
+
+    def __init__(self, headers: dict | None = None) -> None:
+        self._headers = headers or {}
+
+    def getall(self, key: str, default: list | None = None) -> list:
+        """Get all values for a header key."""
+        # Handle case-insensitive lookup
+        for k, v in self._headers.items():
+            if k.lower() == key.lower():
+                if isinstance(v, list):
+                    return v
+                return [v]
+        return default if default is not None else []
+
+
 class MockResponse:
     """Mock aiohttp ClientResponse for cookie testing."""
 
     def __init__(self, cookies: dict | None = None, headers: dict | None = None) -> None:
         self._cookies = cookies or {}
-        self._headers = headers or {}
+        self._headers = MockHeaders(headers)
 
     @property
     def cookies(self) -> dict:
         return self._cookies
 
     @property
-    def headers(self) -> dict:
+    def headers(self) -> MockHeaders:
         return self._headers
 
 

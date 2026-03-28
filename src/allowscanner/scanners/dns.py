@@ -173,11 +173,11 @@ class DNSScanner:
         dkim_found = False
         selectors = ["default", "google", "k1", "selector1", "s1", "mail"]
 
-        try:
-            resolver = dns.asyncresolver.Resolver()
-            resolver.lifetime = 10
+        for selector in selectors:
+            try:
+                resolver = dns.asyncresolver.Resolver()
+                resolver.lifetime = 10
 
-            for selector in selectors:
                 try:
                     answers = await resolver.resolve(f"{selector}._domainkey.{domain}", "TXT")
                     if answers:
@@ -194,8 +194,9 @@ class DNSScanner:
                     continue
                 except dns.exception.DNSException:
                     continue
-        except Exception as e:
-            logger.error(f"Unexpected error during DKIM check for {domain}: {e}")
+            except Exception as e:
+                logger.error(f"Unexpected error during DKIM check for {selector}._domainkey.{domain}: {e}")
+                continue
 
         if not dkim_found:
             records["dkim"] = None

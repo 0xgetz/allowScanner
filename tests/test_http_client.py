@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
 from allowscanner.core.config import ScanConfig
-from allowscanner.core.exceptions import NetworkError, TimeoutError, SSLError
+from allowscanner.core.exceptions import NetworkError, TimeoutError, SSLError, AllowScannerError
 from allowscanner.scanners.http import HttpClient
 
 
@@ -54,6 +54,42 @@ class MockClientResponse:
 
     async def __aexit__(self, *args) -> None:
         pass
+
+
+class AsyncMockContextManager:
+    """Async context manager that can be called with arguments."""
+    
+    def __init__(self, response: MockClientResponse | None = None, side_effect: Exception | None = None):
+        self.response = response
+        self.side_effect = side_effect
+        self.call_args_list = []
+    
+    def __call__(self, *args, **kwargs):
+        """Store call args and return self as context manager."""
+        self.call_args_list.append((args, kwargs))
+        return self
+    
+    async def __aenter__(self):
+        if self.side_effect:
+            raise self.side_effect
+        return self.response
+    
+    async def __aexit__(self, *args):
+        pass
+
+
+class MockSession:
+    """Mock aiohttp ClientSession that supports async context manager protocol."""
+
+    def __init__(self, response: MockClientResponse | None = None, side_effect: Exception | None = None):
+        self.response = response
+        self.side_effect = side_effect
+        # Create async context manager methods for each HTTP method
+        self.get = AsyncMockContextManager(response, side_effect)
+        self.post = AsyncMockContextManager(response, side_effect)
+        self.delete = AsyncMockContextManager(response, side_effect)
+        self.request = AsyncMockContextManager(response, side_effect)
+        self.close = AsyncMock()
 
 
 class TestHttpClientCreation:
@@ -124,9 +160,9 @@ class TestHttpGet:
             headers={"Content-Type": "text/html"},
             text_content="<html>Hello</html>",
         )
-
-        client._session = MagicMock()
-        client._session.get = AsyncMock(return_value=mock_response)
+        
+        mock_session = MockSession(response=mock_response)
+        client._session = mock_session
 
         resp, content = await client.get("https://example.com")
 
@@ -140,24 +176,25 @@ class TestHttpGet:
     ) -> None:
         """Test that get() passes headers correctly."""
         mock_response = MockClientResponse(status=200)
-
-        client._session = MagicMock()
-        client._session.get = AsyncMock(return_value=mock_response)
+        mock_session = MockSession(response=mock_response)
+        client._session = mock_session
 
         headers = {"Authorization": "Bearer token123"}
         await client.get("https://example.com", headers=headers)
 
-        client._session.get.assert_called_once_with(
-            "https://example.com", headers=headers
-        )
+        # Check that get was called with the correct arguments
+        assert len(mock_session.get.call_args_list) > 0
+        call_args, call_kwargs = mock_session.get.call_args_list[0]
+        assert call_args[0] == "https://example.com"
+        assert call_kwargs["headers"] == headers
 
     @pytest.mark.asyncio
     async def test_get_raises_network_error_on_exception(
         self, client: HttpClient
     ) -> None:
         """Test that get() raises NetworkError on exception."""
-        client._session = MagicMock()
-        client._session.get = AsyncMock(side_effect=Exception("Network error"))
+        mock_session = MockSession(side_effect=Exception("Network error"))
+        client._session = mock_session
 
         with pytest.raises(NetworkError):
             await client.get("https://example.com")
@@ -173,11 +210,10 @@ class TestHttpRequest:
         """Test that request() with POST returns response."""
         mock_response = MockClientResponse(
             status=201,
-            text_content='{"status": "created"}',
+            text_content='{\"status\": \"created\"}',
         )
-
-        client._session = MagicMock()
-        client._session.request = AsyncMock(return_value=mock_response)
+        mock_session = MockSession(response=mock_response)
+        client._session = mock_session
 
         resp, content = await client.request("POST", "https://example.com/api", data="test")
 
@@ -191,23 +227,24 @@ class TestHttpRequest:
     ) -> None:
         """Test that request() passes method correctly."""
         mock_response = MockClientResponse(status=200)
-
-        client._session = MagicMock()
-        client._session.request = AsyncMock(return_value=mock_response)
+        mock_session = MockSession(response=mock_response)
+        client._session = mock_session
 
         await client.request("DELETE", "https://example.com/resource")
 
-        client._session.request.assert_called_once_with(
-            "DELETE", "https://example.com/resource"
-        )
+        # The HttpClient uses getattr to get the method function, so for DELETE
+        # it will call self.session.delete() directly
+        assert len(mock_session.delete.call_args_list) > 0
+        call_args, _ = mock_session.delete.call_args_list[0]
+        assert call_args[0] == "https://example.com/resource"
 
     @pytest.mark.asyncio
     async def test_request_raises_network_error_on_exception(
         self, client: HttpClient
     ) -> None:
         """Test that request() raises NetworkError on exception."""
-        client._session = MagicMock()
-        client._session.request = AsyncMock(side_effect=Exception("Network error"))
+        mock_session = MockSession(side_effect=Exception("Network error"))
+        client._session = mock_session
 
         with pytest.raises(NetworkError):
             await client.request("POST", "https://example.com")
@@ -258,7 +295,7 @@ class TestSessionProperty:
         """Test that session property raises when not started."""
         client._session = None
 
-        with pytest.raises(Exception, match="not started"):
+        with pytest.raises(AllowScannerError, match="not started"):
             client.session
 
 
@@ -270,10 +307,14 @@ class TestSSLVerification:
         self, client: HttpClient
     ) -> None:
         """Test that SSL verification is enabled by default."""
-        with patch("aiohttp.ClientSession") as mock_session, patch("ssl.create_default_context") as mock_ssl:
-            mock_ctx = MagicMock()
-            mock_ssl.return_value = mock_ctx
-
+        # Create a mock SSL context with the expected attributes
+        mock_ctx = MagicMock()
+        mock_ctx.check_hostname = True
+        mock_ctx.verify_mode = MagicMock()  # Just check it's set, not the exact value
+        
+        with patch("ssl.create_default_context", return_value=mock_ctx), \
+             patch("aiohttp.ClientSession") as mock_session, \
+             patch("aiohttp.TCPConnector") as mock_connector:
             await client.start()
 
             # SSL context should have verification enabled

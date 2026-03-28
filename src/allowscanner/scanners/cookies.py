@@ -58,10 +58,25 @@ class CookieScanner:
 
     def _check_cookie_string(self, raw: str, url: str) -> list[Vulnerability]:
         vulns = []
-        parts = [p.strip().lower() for p in raw.split(";")]
-        cookie_name = parts[0].split("=")[0].strip() if parts else "unknown"
+        # Parse cookie string into parts, keeping original case for attribute detection
+        raw_parts = [p.strip() for p in raw.split(";")]
+        parts_lower = [p.lower() for p in raw_parts]
+        cookie_name = raw_parts[0].split("=")[0].strip() if raw_parts else "unknown"
 
-        if "secure" not in parts:
+        # Helper function to check if an attribute exists (case-insensitive)
+        def has_attribute(attr: str) -> bool:
+            return any(p.lower() == attr for p in parts_lower)
+
+        # Helper function to get attribute value (case-insensitive)
+        def get_attribute_value(attr: str) -> str | None:
+            for p in raw_parts:
+                if "=" in p:
+                    key, _, value = p.partition("=")
+                    if key.strip().lower() == attr.lower():
+                        return value.strip().lower()
+            return None
+
+        if not has_attribute("secure"):
             vulns.append(Vulnerability(
                 name=f"Insecure Cookie: {cookie_name}",
                 severity=Severity.MEDIUM,
@@ -71,7 +86,7 @@ class CookieScanner:
                 cwe="CWE-614",
             ))
 
-        if "httponly" not in parts:
+        if not has_attribute("httponly"):
             vulns.append(Vulnerability(
                 name=f"Cookie Missing HttpOnly: {cookie_name}",
                 severity=Severity.MEDIUM,
@@ -81,7 +96,9 @@ class CookieScanner:
                 cwe="CWE-1004",
             ))
 
-        if "samesite" not in parts:
+        # Check for SameSite attribute (with or without value)
+        samesite_value = get_attribute_value("samesite")
+        if samesite_value is None:
             vulns.append(Vulnerability(
                 name=f"Cookie Missing SameSite: {cookie_name}",
                 severity=Severity.LOW,

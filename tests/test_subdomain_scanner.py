@@ -14,7 +14,7 @@ from allowscanner.scanners.subdomain import COMMON_SUBDOMAINS, SubdomainScanner
 @pytest.fixture
 def scanner() -> SubdomainScanner:
     """Create a SubdomainScanner instance."""
-    return SubdomainScanner(wordlist_size=10)
+    return SubdomainScanner(wordlist_size=100)
 
 
 class TestSubdomainEnumeration:

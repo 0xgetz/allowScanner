@@ -421,11 +421,11 @@ class TestOpenRedirect:
         )
         session = MockSession(responses=[mock_response] * 20)
 
-        async def mock_request(method: str, url: str, **kwargs) -> tuple:
+        async def mock_get(url: str, **kwargs) -> tuple:
             content = ""
             return mock_response, content
 
-        session.request = mock_request  # type: ignore
+        session.get = mock_get  # type: ignore
 
         vulns = await scanner.scan("https://example.com", session)
         redirect_vulns = [v for v in vulns if "Open Redirect" in v.name]

@@ -6,6 +6,8 @@ all scanner modules.
 
 from __future__ import annotations
 
+from typing import Dict, Optional
+
 
 class AllowScannerError(Exception):
     """Base exception for all AllowScanner errors.
@@ -14,14 +16,22 @@ class AllowScannerError(Exception):
     Provides consistent error handling and logging.
     """
 
-    def __init__(self, message: str, details: dict | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict] = None,
+        original_error: Optional[Exception] = None,
+        suggestion: Optional[str] = None,
+    ) -> None:
         self.message = message
-        self.details = details or {}
+        self.context = context or {}
+        self.original_error = original_error
+        self.suggestion = suggestion
         super().__init__(self.message)
 
     def __str__(self) -> str:
-        if self.details:
-            details_str = ", ".join(f"{k}={v}" for k, v in self.details.items())
+        if self.context:
+            details_str = ", ".join(f"{k}={v}" for k, v in self.context.items())
             return f"{self.message} ({details_str})"
         return self.message
 
@@ -32,15 +42,21 @@ class ValidationError(AllowScannerError):
     Used for invalid URLs, malformed configurations, or invalid parameters.
     """
 
-    def __init__(self, message: str, field: str | None = None, value: str | None = None, suggestion: str | None = None) -> None:
-        details = {}
+    def __init__(
+        self,
+        message: str,
+        field: Optional[str] = None,
+        value: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        context: Optional[Dict] = None,
+        original_error: Optional[Exception] = None,
+    ) -> None:
+        ctx = context or {}
         if field:
-            details["field"] = field
+            ctx["field"] = field
         if value:
-            details["value"] = value
-        if suggestion:
-            details["suggestion"] = suggestion
-        super().__init__(message, details)
+            ctx["value"] = value
+        super().__init__(message, context=ctx, original_error=original_error, suggestion=suggestion)
 
 
 class NetworkError(AllowScannerError):
@@ -52,24 +68,21 @@ class NetworkError(AllowScannerError):
     def __init__(
         self,
         message: str,
-        url: str | None = None,
-        host: str | None = None,
-        port: int | None = None,
-        original_error: Exception | None = None,
-        suggestion: str | None = None,
+        url: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        original_error: Optional[Exception] = None,
+        suggestion: Optional[str] = None,
+        context: Optional[Dict] = None,
     ) -> None:
-        details = {}
+        ctx = context or {}
         if url:
-            details["url"] = url
+            ctx["url"] = url
         if host:
-            details["host"] = host
+            ctx["host"] = host
         if port:
-            details["port"] = port
-        if original_error:
-            details["original_error"] = type(original_error).__name__
-        if suggestion:
-            details["suggestion"] = suggestion
-        super().__init__(message, details)
+            ctx["port"] = port
+        super().__init__(message, context=ctx, original_error=original_error, suggestion=suggestion)
 
 
 class SSLError(AllowScannerError):
@@ -81,24 +94,21 @@ class SSLError(AllowScannerError):
     def __init__(
         self,
         message: str,
-        host: str | None = None,
-        port: int | None = None,
-        certificate_info: dict | None = None,
-        original_error: Exception | None = None,
-        suggestion: str | None = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        certificate_info: Optional[Dict] = None,
+        original_error: Optional[Exception] = None,
+        suggestion: Optional[str] = None,
+        context: Optional[Dict] = None,
     ) -> None:
-        details = {}
+        ctx = context or {}
         if host:
-            details["host"] = host
+            ctx["host"] = host
         if port:
-            details["port"] = port
+            ctx["port"] = port
         if certificate_info:
-            details["certificate_info"] = certificate_info
-        if original_error:
-            details["original_error"] = type(original_error).__name__
-        if suggestion:
-            details["suggestion"] = suggestion
-        super().__init__(message, details)
+            ctx["certificate_info"] = certificate_info
+        super().__init__(message, context=ctx, original_error=original_error, suggestion=suggestion)
 
 
 class DNSError(AllowScannerError):
@@ -110,21 +120,18 @@ class DNSError(AllowScannerError):
     def __init__(
         self,
         message: str,
-        domain: str | None = None,
-        record_type: str | None = None,
-        original_error: Exception | None = None,
-        suggestion: str | None = None,
+        domain: Optional[str] = None,
+        record_type: Optional[str] = None,
+        original_error: Optional[Exception] = None,
+        suggestion: Optional[str] = None,
+        context: Optional[Dict] = None,
     ) -> None:
-        details = {}
+        ctx = context or {}
         if domain:
-            details["domain"] = domain
+            ctx["domain"] = domain
         if record_type:
-            details["record_type"] = record_type
-        if original_error:
-            details["original_error"] = type(original_error).__name__
-        if suggestion:
-            details["suggestion"] = suggestion
-        super().__init__(message, details)
+            ctx["record_type"] = record_type
+        super().__init__(message, context=ctx, original_error=original_error, suggestion=suggestion)
 
 
 class TimeoutError(AllowScannerError):
@@ -136,24 +143,27 @@ class TimeoutError(AllowScannerError):
     def __init__(
         self,
         message: str,
-        operation: str | None = None,
-        timeout_seconds: float | None = None,
-        url: str | None = None,
-        host: str | None = None,
-        suggestion: str | None = None,
+        operation: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        timeout_duration: Optional[float] = None,
+        url: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        context: Optional[Dict] = None,
+        original_error: Optional[Exception] = None,
     ) -> None:
-        details = {}
+        ctx = context or {}
         if operation:
-            details["operation"] = operation
-        if timeout_seconds:
-            details["timeout_seconds"] = timeout_seconds
-        if url:
-            details["url"] = url
+            ctx["operation"] = operation
         if host:
-            details["host"] = host
-        if suggestion:
-            details["suggestion"] = suggestion
-        super().__init__(message, details)
+            ctx["host"] = host
+        if port:
+            ctx["port"] = port
+        if timeout_duration:
+            ctx["timeout_duration"] = timeout_duration
+        if url:
+            ctx["url"] = url
+        super().__init__(message, context=ctx, original_error=original_error, suggestion=suggestion)
 
 
 class ConfigurationError(AllowScannerError):
@@ -165,21 +175,21 @@ class ConfigurationError(AllowScannerError):
     def __init__(
         self,
         message: str,
-        config_key: str | None = None,
-        config_value: str | None = None,
-        allowed_values: list[str] | None = None,
-        suggestion: str | None = None,
+        config_key: Optional[str] = None,
+        config_value: Optional[str] = None,
+        allowed_values: Optional[list] = None,
+        suggestion: Optional[str] = None,
+        context: Optional[Dict] = None,
+        original_error: Optional[Exception] = None,
     ) -> None:
-        details = {}
+        ctx = context or {}
         if config_key:
-            details["config_key"] = config_key
+            ctx["config_key"] = config_key
         if config_value:
-            details["config_value"] = config_value
+            ctx["config_value"] = config_value
         if allowed_values:
-            details["allowed_values"] = allowed_values
-        if suggestion:
-            details["suggestion"] = suggestion
-        super().__init__(message, details)
+            ctx["allowed_values"] = allowed_values
+        super().__init__(message, context=ctx, original_error=original_error, suggestion=suggestion)
 
 
 class ScannerError(AllowScannerError):
@@ -191,18 +201,15 @@ class ScannerError(AllowScannerError):
     def __init__(
         self,
         message: str,
-        scanner_name: str | None = None,
-        target: str | None = None,
-        original_error: Exception | None = None,
-        suggestion: str | None = None,
+        scanner_name: Optional[str] = None,
+        target: Optional[str] = None,
+        original_error: Optional[Exception] = None,
+        suggestion: Optional[str] = None,
+        context: Optional[Dict] = None,
     ) -> None:
-        details = {}
+        ctx = context or {}
         if scanner_name:
-            details["scanner_name"] = scanner_name
+            ctx["scanner_name"] = scanner_name
         if target:
-            details["target"] = target
-        if original_error:
-            details["original_error"] = type(original_error).__name__
-        if suggestion:
-            details["suggestion"] = suggestion
-        super().__init__(message, details)
+            ctx["target"] = target
+        super().__init__(message, context=ctx, original_error=original_error, suggestion=suggestion)

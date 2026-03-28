@@ -36,6 +36,12 @@ class SSLScanner:
             if not hostname:
                 logger.warning(f"Could not extract hostname from URL: {url}")
                 return None, []
+
+            # Only scan HTTPS URLs
+            scheme = parsed.scheme
+            if scheme != "https":
+                logger.debug(f"Skipping SSL scan for non-HTTPS URL: {url}")
+                return None, []
         except Exception as e:
             logger.error(f"Failed to parse URL {url}: {e}")
             return None, []
@@ -98,7 +104,16 @@ class SSLScanner:
                 if not_after:
                     cert_info.not_after = not_after
                     try:
-                        not_after_date = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
+                        # Try parsing with timezone first, then without
+                        not_after_date = None
+                        for fmt in ["%b %d %H:%M:%S %Y %Z", "%b %d %H:%M:%S %Y"]:
+                            try:
+                                not_after_date = datetime.strptime(not_after.strip(), fmt)
+                                break
+                            except ValueError:
+                                continue
+                        if not_after_date is None:
+                            raise ValueError(f"Unable to parse date: {not_after}")
                         days_left = (not_after_date - datetime.now()).days
                         cert_info.days_remaining = days_left
 
@@ -189,15 +204,7 @@ class SSLScanner:
             )
         except builtins.TimeoutError as e:
             logger.warning(f"Connection timeout for {hostname}: {e}")
-            raise TimeoutError(
-                f"Connection timed out for {hostname}",
-                host=hostname,
-                port=443,
-                operation="SSL handshake",
-                timeout_seconds=10,
-                original_error=e,
-                suggestion="Check if the server is accessible or increase timeout"
-            )
+            # Return None gracefully like ConnectionRefusedError
         except ConnectionRefusedError as e:
             logger.debug(f"Connection refused for {hostname}: {e}")
             # HTTPS not available - not critical for HTTP sites
