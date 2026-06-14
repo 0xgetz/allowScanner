@@ -43,7 +43,8 @@ Examples:
         """,
     )
 
-    parser.add_argument("url", help="Target URL to scan (must start with http:// or https://)")
+    parser.add_argument("url", nargs="?", help="Target URL to scan (must start with http:// or https://)")
+    parser.add_argument("--doctor", action="store_true", help="Run an environment self-test and exit")
     parser.add_argument("-o", "--output", help="Output file path")
     parser.add_argument(
         "-f",
@@ -100,6 +101,7 @@ Examples:
     scan.add_argument("--no-waf", action="store_true", help="Skip WAF/CDN detection")
     scan.add_argument("--no-crawl", action="store_true", help="Skip crawler / surface mapping")
     scan.add_argument("--no-paramfind", action="store_true", help="Skip hidden-parameter discovery")
+    scan.add_argument("--no-inject", action="store_true", help="Skip injection verification (XSS / blind SQLi)")
     scan.add_argument("--only", help="Only run specific modules (comma-separated)")
 
     return parser.parse_args(argv)
@@ -230,6 +232,7 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_waf = "waf" in modules
             config.check_crawl = "crawl" in modules
             config.check_paramfind = "paramfind" in modules
+            config.check_inject = "inject" in modules
         else:
             config.check_ssl = not args.no_ssl
             config.check_dns = not args.no_dns
@@ -250,6 +253,7 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_waf = not args.no_waf
             config.check_crawl = not args.no_crawl
             config.check_paramfind = not args.no_paramfind
+            config.check_inject = not args.no_inject
 
         return config
 
@@ -289,7 +293,7 @@ async def async_main(args: argparse.Namespace) -> int:
 
         console.print(f"  [dim]Target:[/] [cyan]{target}[/]")
         console.print(
-            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'secrets', 'graphql', 'methods', 'takeover', 'waf', 'crawl', 'paramfind', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
+            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'secrets', 'graphql', 'methods', 'takeover', 'waf', 'crawl', 'paramfind', 'inject', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
         )
         console.print()
 
@@ -370,6 +374,24 @@ async def async_main(args: argparse.Namespace) -> int:
 def main() -> None:
     """Main entry point with error handling."""
     args = parse_args()
+
+    if args.doctor:
+        from .core.doctor import run_doctor
+
+        ok, lines = run_doctor()
+        console.print("[bold]allowScanner environment check[/]\n")
+        for line in lines:
+            console.print(line)
+        console.print(
+            f"\n{'[green]All required checks passed.[/]' if ok else '[red]Some checks failed — see above.[/]'}"
+        )
+        sys.exit(0 if ok else 1)
+
+    if not args.url:
+        console.print(
+            "[red]\u274c No target URL given.[/] Usage: [cyan]allowscanner <url>[/]  (or [cyan]allowscanner --doctor[/])"
+        )
+        sys.exit(2)
     try:
         exit_code = asyncio.run(async_main(args))
         sys.exit(exit_code)
