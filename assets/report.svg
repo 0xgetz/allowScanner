@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="490" viewBox="0 0 720 490" font-family="ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace" font-size="15">
+<rect width="720" height="490" rx="10" fill="#0d1117"/>
+<rect width="720" height="40" rx="10" fill="#161b22"/>
+<rect y="30" width="720" height="10" fill="#161b22"/>
+<circle cx="22" cy="20" r="6" fill="#f85149"/><circle cx="42" cy="20" r="6" fill="#d29922"/><circle cx="62" cy="20" r="6" fill="#3fb950"/>
+<text x="360" y="25" fill="#8b949e" text-anchor="middle" font-size="13">allowscanner — scan</text>
+<text x="26" y="60" xml:space="preserve"><tspan fill="#7ee787">$ </tspan><tspan fill="#e6edf3">allowscanner https://example.com</tspan></text>
+<text x="26" y="106" xml:space="preserve"><tspan fill="#a371f7">🛡  AllowScanner v2.0</tspan></text>
+<text x="26" y="129" xml:space="preserve"><tspan fill="#8b949e">   Target:  </tspan><tspan fill="#56d4dd">https://example.com</tspan></text>
+<text x="26" y="152" xml:space="preserve"><tspan fill="#8b949e">   Modules: </tspan><tspan fill="#e6edf3">ssl dns headers vulns tech ports fuzz secrets graphql</tspan></text>
+<text x="26" y="175" xml:space="preserve"><tspan fill="#8b949e">            </tspan><tspan fill="#e6edf3">methods takeover waf crawl paramfind inject cors cookies</tspan></text>
+<text x="26" y="221" xml:space="preserve"><tspan fill="#8b949e">  Score    </tspan><tspan fill="#d29922">68/100</tspan></text>
+<text x="26" y="244" xml:space="preserve"><tspan fill="#8b949e">  Critical </tspan><tspan fill="#f85149">1</tspan><tspan fill="#8b949e">    High </tspan><tspan fill="#f85149">2</tspan><tspan fill="#8b949e">    Medium </tspan><tspan fill="#d29922">5</tspan><tspan fill="#8b949e">    Low </tspan><tspan fill="#56d4dd">3</tspan></text>
+<text x="26" y="290" xml:space="preserve"><tspan fill="#f85149">  CRITICAL  </tspan><tspan fill="#e6edf3">Open Port 6379 (Redis)            </tspan><tspan fill="#8b949e">CWE-668</tspan></text>
+<text x="26" y="313" xml:space="preserve"><tspan fill="#f85149">  HIGH      </tspan><tspan fill="#e6edf3">Reflected XSS                     </tspan><tspan fill="#8b949e">CWE-79</tspan></text>
+<text x="26" y="336" xml:space="preserve"><tspan fill="#f85149">  CRITICAL  </tspan><tspan fill="#e6edf3">SQL Injection (time-based blind)  </tspan><tspan fill="#8b949e">CWE-89</tspan></text>
+<text x="26" y="359" xml:space="preserve"><tspan fill="#d29922">  MEDIUM    </tspan><tspan fill="#e6edf3">DMARC Record Missing              </tspan><tspan fill="#8b949e">CWE-940</tspan></text>
+<text x="26" y="382" xml:space="preserve"><tspan fill="#56d4dd">  LOW       </tspan><tspan fill="#e6edf3">Cookie missing HttpOnly           </tspan><tspan fill="#8b949e">CWE-1004</tspan></text>
+<text x="26" y="405" xml:space="preserve"><tspan fill="#8b949e">  INFO      </tspan><tspan fill="#e6edf3">Hidden Parameters Discovered (4)  </tspan><tspan fill="#8b949e">CWE-200</tspan></text>
+<text x="26" y="451" xml:space="preserve"><tspan fill="#3fb950">  ✅ JSON report saved to report.json</tspan></text>
+</svg>
