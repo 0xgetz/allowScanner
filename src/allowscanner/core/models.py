@@ -67,6 +67,7 @@ class CertificateInfo:
     cipher: str = ""
     days_remaining: int | None = None
     san: list[str] = field(default_factory=list)
+    supported_protocols: list[str] = field(default_factory=list)
 
 
 @dataclass
