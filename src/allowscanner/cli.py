@@ -81,6 +81,10 @@ Examples:
     scan.add_argument("--no-cookies", action="store_true", help="Skip cookie security checks")
     scan.add_argument("--no-ports", action="store_true", help="Skip TCP port scan")
     scan.add_argument("--no-fuzz", action="store_true", help="Skip content discovery / path fuzzing")
+    scan.add_argument("--no-secrets", action="store_true", help="Skip secret/endpoint discovery")
+    scan.add_argument("--no-graphql", action="store_true", help="Skip GraphQL introspection check")
+    scan.add_argument("--no-methods", action="store_true", help="Skip HTTP method audit")
+    scan.add_argument("--no-takeover", action="store_true", help="Skip subdomain takeover detection")
     scan.add_argument("--only", help="Only run specific modules (comma-separated)")
 
     return parser.parse_args(argv)
@@ -187,6 +191,10 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_cookies = "cookies" in modules
             config.check_ports = "ports" in modules
             config.check_fuzz = "fuzz" in modules
+            config.check_secrets = "secrets" in modules
+            config.check_graphql = "graphql" in modules
+            config.check_methods = "methods" in modules
+            config.check_takeover = "takeover" in modules
         else:
             config.check_ssl = not args.no_ssl
             config.check_dns = not args.no_dns
@@ -200,6 +208,10 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_cookies = not args.no_cookies
             config.check_ports = not args.no_ports
             config.check_fuzz = not args.no_fuzz
+            config.check_secrets = not args.no_secrets
+            config.check_graphql = not args.no_graphql
+            config.check_methods = not args.no_methods
+            config.check_takeover = not args.no_takeover
 
         return config
 
@@ -239,7 +251,7 @@ async def async_main(args: argparse.Namespace) -> int:
 
         console.print(f"  [dim]Target:[/] [cyan]{target}[/]")
         console.print(
-            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
+            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'secrets', 'graphql', 'methods', 'takeover', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
         )
         console.print()
 
