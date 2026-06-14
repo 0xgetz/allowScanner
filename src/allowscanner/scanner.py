@@ -27,6 +27,7 @@ from .scanners import (
     TakeoverScanner,
     TechScanner,
     VulnerabilityScanner,
+    WafScanner,
 )
 from .scanners.http import HttpClient
 
@@ -158,6 +159,8 @@ class AllowScanner:
                 tasks.append(self._run_graphql(http))
             if self.config.check_methods:
                 tasks.append(self._run_methods(http))
+            if self.config.check_waf:
+                tasks.append(self._run_waf(http))
 
             # Run all tasks with error recovery
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -365,3 +368,14 @@ class AllowScanner:
             logger.debug(f"Takeover scan completed: {len(vulns)} findings")
         except Exception as e:
             logger.error(f"Takeover scanner failed: {e}")
+
+    async def _run_waf(self, http: HttpClient) -> None:
+        """Run WAF/CDN detection."""
+        try:
+            scanner = WafScanner()
+            vulns = await scanner.scan(self.target_url, http)
+            self.result.vulnerabilities.extend(vulns)
+            logger.debug(f"WAF scan completed: {len(vulns)} findings")
+        except Exception as e:
+            logger.error(f"WAF scanner failed: {e}")
+            raise
