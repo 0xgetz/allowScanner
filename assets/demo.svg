@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="329" viewBox="0 0 720 329" font-family="ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace" font-size="15">
+<rect width="720" height="329" rx="10" fill="#0d1117"/>
+<rect width="720" height="40" rx="10" fill="#161b22"/>
+<rect y="30" width="720" height="10" fill="#161b22"/>
+<circle cx="22" cy="20" r="6" fill="#f85149"/><circle cx="42" cy="20" r="6" fill="#d29922"/><circle cx="62" cy="20" r="6" fill="#3fb950"/>
+<text x="360" y="25" fill="#8b949e" text-anchor="middle" font-size="13">allowscanner — demo</text>
+<text x="26" y="60" xml:space="preserve"><tspan fill="#7ee787">$ </tspan><tspan fill="#e6edf3">allowscanner https://example.com</tspan></text>
+<rect x="334" y="47" width="9" height="16" fill="#e6edf3"><animate attributeName="opacity" values="1;1;0;0" dur="1s" repeatCount="indefinite"/></rect>
+<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.128;0.138;0.93;1" dur="9.0s" repeatCount="indefinite"/><text x="26" y="83" xml:space="preserve"><tspan fill="#a371f7">🛡  AllowScanner v2.0  — scanning…</tspan></text></g>
+<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.189;0.199;0.93;1" dur="9.0s" repeatCount="indefinite"/><text x="26" y="106" xml:space="preserve"><tspan fill="#8b949e">  [ssl] </tspan><tspan fill="#d29922">TLS 1.0 supported</tspan></text></g>
+<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.250;0.260;0.93;1" dur="9.0s" repeatCount="indefinite"/><text x="26" y="129" xml:space="preserve"><tspan fill="#8b949e">  [headers] </tspan><tspan fill="#d29922">Missing Content-Security-Policy</tspan></text></g>
+<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.311;0.321;0.93;1" dur="9.0s" repeatCount="indefinite"/><text x="26" y="152" xml:space="preserve"><tspan fill="#8b949e">  [paramfind] </tspan><tspan fill="#56d4dd">4 hidden parameters</tspan></text></g>
+<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.372;0.382;0.93;1" dur="9.0s" repeatCount="indefinite"/><text x="26" y="175" xml:space="preserve"><tspan fill="#8b949e">  [inject] </tspan><tspan fill="#f85149">Reflected XSS confirmed</tspan></text></g>
+<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.433;0.443;0.93;1" dur="9.0s" repeatCount="indefinite"/><text x="26" y="198" xml:space="preserve"><tspan fill="#8b949e">  [inject] </tspan><tspan fill="#f85149">SQL Injection (time-based blind)</tspan></text></g>
+<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.494;0.504;0.93;1" dur="9.0s" repeatCount="indefinite"/><text x="26" y="221" xml:space="preserve"><tspan fill="#8b949e">  [ports] </tspan><tspan fill="#f85149">6379 open (Redis)</tspan></text></g>
+<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.617;0.627;0.93;1" dur="9.0s" repeatCount="indefinite"/><text x="26" y="267" xml:space="preserve"><tspan fill="#8b949e">  Score </tspan><tspan fill="#d29922">68/100</tspan><tspan fill="#8b949e">   Critical </tspan><tspan fill="#f85149">1</tspan><tspan fill="#8b949e">  High </tspan><tspan fill="#f85149">2</tspan><tspan fill="#8b949e">  Medium </tspan><tspan fill="#d29922">5</tspan></text></g>
+<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.678;0.688;0.93;1" dur="9.0s" repeatCount="indefinite"/><text x="26" y="290" xml:space="preserve"><tspan fill="#3fb950">  ✅ done in 4.2s</tspan></text></g>
+</svg>
