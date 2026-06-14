@@ -33,9 +33,12 @@ class ScanConfig:
     check_ports: bool = True
     check_cors: bool = True
     check_cookies: bool = True
+    check_fuzz: bool = True
 
     # Subdomain wordlist size
     subdomain_wordlist_size: int = 500
+    fuzz_wordlist: list[str] | None = None
+    port_list: list[int] | None = None
 
     # Port scan range
     port_range: tuple[int, int] = field(default_factory=lambda: (1, 1024))
