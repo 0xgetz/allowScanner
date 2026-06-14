@@ -34,6 +34,7 @@ One command, seventeen recon and security modules, a single 0–100 score. Async
 | 🔑 **Secret & endpoint discovery** | Greps HTML and linked JS for leaked API keys, tokens, private keys, and hidden endpoints |
 | 🧩 **GraphQL introspection** | Finds GraphQL endpoints and flags exposed introspection |
 | 🚦 **HTTP method audit** | Detects dangerous verbs (PUT, DELETE, TRACE/XST, PATCH, CONNECT) |
+| 💉 **Injection verification** | Confirms reflected XSS (unescaped vs encoded) and **blind SQLi** (boolean + time-based), re-checked to suppress false positives |
 | 🛡️ **Security headers** | CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy |
 | 🔐 **SSL/TLS audit** | Certificate validity, expiry, SANs; **actively probes** for deprecated TLS 1.0/1.1 support and weak ciphers |
 | 🧱 **WAF/CDN detection** | Fingerprints Cloudflare, Akamai, Imperva, Sucuri, F5, AWS, Fastly + active blocking probe |
@@ -60,6 +61,10 @@ pipx install allowscanner
 git clone https://github.com/0xgetz/allowScanner.git
 cd allowScanner
 pip install -e .
+
+# Or via make
+make install      # runtime only
+make dev          # with test + lint tooling
 ```
 
 Requires Python 3.10+.
@@ -69,6 +74,9 @@ Requires Python 3.10+.
 ```bash
 # Full scan
 allowscanner https://example.com
+
+# Verify your environment before the first run
+allowscanner --doctor
 
 # JSON report for piping into other tools
 allowscanner https://example.com -f json -o report.json
@@ -118,6 +126,7 @@ Options:
       --no-color          Disable colored output
       --no-ssl-verify     Disable TLS certificate verification (use with care)
       --log-file FILE     Write structured logs to a file
+      --doctor            Run an environment self-test and exit
 
 Auth & traffic:
   -H, --header "K: V"      Extra request header (repeatable)
@@ -130,6 +139,7 @@ Scope & surface:
       --exclude REGEX     Skip URLs matching regex (repeatable)
       --no-crawl          Skip the crawler / surface mapping
       --no-paramfind      Skip hidden-parameter discovery
+      --no-inject         Skip injection verification (XSS / blind SQLi)
 
 Triage:
       --suppress FILE     Drop findings matching an .allowscanignore file
@@ -138,11 +148,11 @@ Triage:
 Module toggles:
   --no-ssl  --no-dns  --no-headers  --no-vulns  --no-admin  --no-sensitive
   --no-tech  --no-subdomains  --no-ports  --no-fuzz  --no-cors  --no-cookies
-  --no-secrets  --no-graphql  --no-methods  --no-takeover  --no-waf  --no-paramfind
+  --no-secrets  --no-graphql  --no-methods  --no-takeover  --no-waf  --no-paramfind  --no-inject
   --only MODULES          Run only these (comma-separated). Modules:
                           ssl, dns, headers, vulns, tech, subdomains, ports,
                           fuzz, secrets, graphql, methods, takeover, waf,
-                          crawl, paramfind, cors, cookies, admin, sensitive
+                          crawl, paramfind, inject, cors, cookies, admin, sensitive
 ```
 
 ## 📊 Example output
@@ -195,10 +205,11 @@ src/allowscanner/
 │   ├── models.py        # Vulnerability, ScanResult, Severity, …
 │   ├── config.py        # Validated scan configuration
 │   ├── exceptions.py    # Exception hierarchy
-│   └── logging.py       # Structured logging + correlation IDs
+│   ├── logging.py       # Structured logging + correlation IDs
 │   ├── scope.py         # In-scope / exclude rules
 │   ├── suppress.py      # .allowscanignore false-positive suppression
-│   └── diff.py          # Baseline diffing by finding fingerprint
+│   ├── diff.py          # Baseline diffing by finding fingerprint
+│   └── doctor.py        # Environment self-test (--doctor)
 ├── scanners/
 │   ├── http.py          # Async HTTP client + rate limiter
 │   ├── vuln.py          # Injection / file / admin checks
@@ -216,6 +227,7 @@ src/allowscanner/
 │   ├── waf.py           # WAF / CDN detection
 │   ├── crawler.py       # Scope-aware crawler / attack-surface mapper
 │   ├── paramfind.py     # Hidden query-parameter discovery
+│   ├── inject.py        # Context-aware XSS + blind SQLi verification
 │   ├── cors.py          # CORS misconfiguration checks
 │   └── cookies.py       # Cookie attribute checks
 └── formatters/          # JSON / Markdown / HTML / SARIF output
@@ -247,13 +259,13 @@ The goal is to graduate from a *checklist scanner* into an **accurate, workflow-
 - **SARIF output** (`-f sarif`) + a composite **GitHub Action** for code scanning
 - **Baseline diff** (`--baseline`) — what's new since the last run
 - **Parameter discovery (Arjun-style)** — finds hidden query params via reflection + status-change signals, bisected to stay low-noise
+- **Injection verification** — context-aware reflected XSS (unescaped vs encoded) and **blind SQLi** (boolean + time-based), re-checked to drop false positives, fed by discovered params
+- **Run-without-friction** — `allowscanner --doctor` env self-test, a `Makefile` (`make install/scan/test/check`), and friendly top-level error handling
 - JSON / Markdown / HTML reports, Docker image, CI (ruff + mypy strict + pytest on 3.10–3.13)
 
 ### 🎯 Next — accuracy (what makes a scanner trusted, not binned)
 
 - **OOB / out-of-band verification (interactsh-style)** — DNS/HTTP callback server to confirm *blind* SSRF, blind SQLi, RCE, and OOB XXE. The single biggest accuracy differentiator. Needs hosted or self-hosted callback infra, so it ships **opt-in**.
-- **Multi-signal + time-based verification** — SQLi via boolean + time-delay (not just error strings); XSS confirmed by reflection context (attribute / script / HTML) before claiming.
-- **Context-aware param fuzzing** — feed discovered params into injection tests with payloads chosen by reflection context.
 
 ### 🎯 Next — coverage
 
