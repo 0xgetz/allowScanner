@@ -16,6 +16,25 @@ from ..core.logging import get_logger
 logger = get_logger()
 
 
+class RateLimiter:
+    """Async rate limiter: paces requests to at most ``rate`` per second (per host/run)."""
+
+    def __init__(self, rate: float) -> None:
+        self._min_interval = 1.0 / rate if rate > 0 else 0.0
+        self._lock = asyncio.Lock()
+        self._next = 0.0
+
+    async def acquire(self) -> None:
+        async with self._lock:
+            loop = asyncio.get_event_loop()
+            now = loop.time()
+            wait = self._next - now
+            if wait > 0:
+                await asyncio.sleep(wait)
+                now = loop.time()
+            self._next = max(now, self._next) + self._min_interval
+
+
 class HttpClient:
     """Shared async HTTP client for all scanners with robust error handling."""
 
@@ -23,6 +42,7 @@ class HttpClient:
         self.config = config
         self._session: aiohttp.ClientSession | None = None
         self._retry_count = 2  # Number of retries for failed requests
+        self._limiter: RateLimiter | None = RateLimiter(float(config.rate_limit)) if config.rate_limit else None
 
     async def start(self) -> None:
         """Initialize the HTTP client session."""
@@ -170,6 +190,8 @@ class HttpClient:
 
     async def _make_request(self, method: str, url: str, **kwargs: Any) -> tuple[aiohttp.ClientResponse | None, str]:
         """Make the actual HTTP request."""
+        if self._limiter is not None:
+            await self._limiter.acquire()
         # Use the appropriate method on the session
         method_func = getattr(self.session, method.lower(), None)
         if method_func is None:
