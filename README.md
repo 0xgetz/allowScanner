@@ -1,6 +1,6 @@
 <div align="center">
 
-![AllowScanner Logo](https://img.shields.io/badge/🛡️-AllowScanner-blue?style=for-the-badge)
+<img src="assets/logo.svg" alt="allowScanner" width="560">
 
 # AllowScanner
 
