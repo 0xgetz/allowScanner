@@ -41,6 +41,7 @@ class ScanConfig:
     check_waf: bool = True
     check_crawl: bool = True
     check_paramfind: bool = True
+    check_inject: bool = True
 
     # Subdomain wordlist size
     subdomain_wordlist_size: int = 500
