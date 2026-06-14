@@ -16,6 +16,8 @@
 
 One command, seventeen recon and security modules, a single 0–100 score. Async from top to bottom, no GUI, no signup, runs in CI.
 
+<img src="assets/demo.svg" alt="allowScanner demo" width="760">
+
 </div>
 
 ---
@@ -103,6 +105,8 @@ allowscanner https://example.com --scope example.com --exclude '/logout' -f sari
 allowscanner https://example.com --baseline last.json --suppress .allowscanignore
 ```
 
+<img src="assets/doctor.svg" alt="allowscanner --doctor output" width="560">
+
 ### Docker
 
 ```bash
@@ -156,6 +160,9 @@ Module toggles:
 ```
 
 ## 📊 Example output
+
+<img src="assets/report.svg" alt="allowScanner scan report" width="720">
+
 
 ```
 ╭──── 📊 Scan Summary ─────────────────────────────────╮
