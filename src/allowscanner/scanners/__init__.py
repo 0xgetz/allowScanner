@@ -9,6 +9,7 @@ from .graphql import GraphQLScanner
 from .headers import HeaderScanner
 from .http import HttpClient
 from .methods import HttpMethodScanner
+from .paramfind import ParamFinder
 from .ports import PortScanner
 from .secrets import SecretScanner
 from .ssl import SSLScanner
@@ -28,6 +29,7 @@ __all__ = [
     "HeaderScanner",
     "HttpClient",
     "HttpMethodScanner",
+    "ParamFinder",
     "PortScanner",
     "SSLScanner",
     "SecretScanner",
