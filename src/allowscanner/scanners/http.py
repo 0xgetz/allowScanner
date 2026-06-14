@@ -17,22 +17,41 @@ logger = get_logger()
 
 
 class RateLimiter:
-    """Async rate limiter: paces requests to at most ``rate`` per second (per host/run)."""
+    """Async rate limiter with adaptive backoff on HTTP 429."""
 
-    def __init__(self, rate: float) -> None:
+    def __init__(self, rate: float = 0.0) -> None:
         self._min_interval = 1.0 / rate if rate > 0 else 0.0
         self._lock = asyncio.Lock()
         self._next = 0.0
+        self._pending_pause = 0.0
 
     async def acquire(self) -> None:
         async with self._lock:
             loop = asyncio.get_event_loop()
             now = loop.time()
-            wait = self._next - now
+            pause = self._pending_pause
+            self._pending_pause = 0.0
+            wait = (self._next - now) + pause
             if wait > 0:
                 await asyncio.sleep(wait)
                 now = loop.time()
             self._next = max(now, self._next) + self._min_interval
+
+    def backoff(self, retry_after: float | None = None) -> None:
+        """Slow down after a 429: widen spacing and insert a one-off pause."""
+        self._min_interval = min(max(self._min_interval * 2, 0.5), 10.0)
+        pause = retry_after if (retry_after and retry_after > 0) else self._min_interval
+        self._pending_pause = max(self._pending_pause, pause)
+
+
+def _parse_retry_after(value: str | None) -> float | None:
+    """Parse a Retry-After header (delta-seconds form only)."""
+    if not value:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
 
 
 class HttpClient:
@@ -42,7 +61,7 @@ class HttpClient:
         self.config = config
         self._session: aiohttp.ClientSession | None = None
         self._retry_count = 2  # Number of retries for failed requests
-        self._limiter: RateLimiter | None = RateLimiter(float(config.rate_limit)) if config.rate_limit else None
+        self._limiter: RateLimiter = RateLimiter(float(config.rate_limit or 0))
 
     async def start(self) -> None:
         """Initialize the HTTP client session."""
@@ -58,9 +77,10 @@ class HttpClient:
                 family=socket.AF_UNSPEC,  # Both IPv4 and IPv6
             )
 
+            session_headers = {"User-Agent": self.config.user_agent, **self.config.extra_headers}
             self._session = aiohttp.ClientSession(
                 connector=connector,
-                headers={"User-Agent": self.config.user_agent},
+                headers=session_headers,
                 timeout=aiohttp.ClientTimeout(total=self.config.timeout),
                 raise_for_status=False,  # Don't raise on 4xx/5xx
             )
@@ -189,19 +209,11 @@ class HttpClient:
         return None, ""
 
     async def _make_request(self, method: str, url: str, **kwargs: Any) -> tuple[aiohttp.ClientResponse | None, str]:
-        """Make the actual HTTP request."""
-        if self._limiter is not None:
-            await self._limiter.acquire()
-        # Use the appropriate method on the session
-        method_func = getattr(self.session, method.lower(), None)
-        if method_func is None:
-            # Fallback to request() for standard methods
-            async with self.session.request(method, url, **kwargs) as resp:
-                text = await resp.text(errors="ignore")
-                logger.debug(f"{method} {url} -> {resp.status}")
-                return resp, text
-        else:
-            async with method_func(url, **kwargs) as resp:
-                text = await resp.text(errors="ignore")
-                logger.debug(f"{method} {url} -> {resp.status}")
-                return resp, text
+        """Make the actual HTTP request, pacing via the rate limiter."""
+        await self._limiter.acquire()
+        async with self.session.request(method, url, **kwargs) as resp:
+            text = await resp.text(errors="ignore")
+            logger.debug(f"{method} {url} -> {resp.status}")
+            if resp.status == 429:
+                self._limiter.backoff(_parse_retry_after(resp.headers.get("Retry-After")))
+            return resp, text
