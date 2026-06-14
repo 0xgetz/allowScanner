@@ -40,10 +40,12 @@ class ScanConfig:
     check_takeover: bool = True
     check_waf: bool = True
     check_crawl: bool = True
+    check_paramfind: bool = True
 
     # Subdomain wordlist size
     subdomain_wordlist_size: int = 500
     fuzz_wordlist: list[str] | None = None
+    param_wordlist: list[str] | None = None
     port_list: list[int] | None = None
     extra_headers: dict[str, str] = field(default_factory=dict)
     scope_hosts: list[str] = field(default_factory=list)
