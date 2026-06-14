@@ -12,7 +12,7 @@ from rich.console import Console
 from .core.config import ScanConfig
 from .core.exceptions import AllowScannerError, ConfigurationError, ValidationError
 from .core.logging import get_logger
-from .formatters import to_json
+from .formatters import to_html, to_json, to_markdown
 from .output import TerminalOutput
 from .scanner import AllowScanner
 
@@ -47,7 +47,7 @@ Examples:
     parser.add_argument(
         "-f",
         "--format",
-        choices=["terminal", "json", "markdown"],
+        choices=["terminal", "json", "markdown", "html"],
         default="terminal",
         help="Output format (default: terminal)",
     )
@@ -85,6 +85,7 @@ Examples:
     scan.add_argument("--no-graphql", action="store_true", help="Skip GraphQL introspection check")
     scan.add_argument("--no-methods", action="store_true", help="Skip HTTP method audit")
     scan.add_argument("--no-takeover", action="store_true", help="Skip subdomain takeover detection")
+    scan.add_argument("--no-waf", action="store_true", help="Skip WAF/CDN detection")
     scan.add_argument("--only", help="Only run specific modules (comma-separated)")
 
     return parser.parse_args(argv)
@@ -195,6 +196,7 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_graphql = "graphql" in modules
             config.check_methods = "methods" in modules
             config.check_takeover = "takeover" in modules
+            config.check_waf = "waf" in modules
         else:
             config.check_ssl = not args.no_ssl
             config.check_dns = not args.no_dns
@@ -212,6 +214,7 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_graphql = not args.no_graphql
             config.check_methods = not args.no_methods
             config.check_takeover = not args.no_takeover
+            config.check_waf = not args.no_waf
 
         return config
 
@@ -251,7 +254,7 @@ async def async_main(args: argparse.Namespace) -> int:
 
         console.print(f"  [dim]Target:[/] [cyan]{target}[/]")
         console.print(
-            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'secrets', 'graphql', 'methods', 'takeover', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
+            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'secrets', 'graphql', 'methods', 'takeover', 'waf', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
         )
         console.print()
 
@@ -264,22 +267,27 @@ async def async_main(args: argparse.Namespace) -> int:
             progress.update(task, completed=100)
 
         # Output results
+        text_output: str | None = None
         if config.output_format == "json":
-            json_output = to_json(result)
+            text_output = to_json(result)
+        elif config.output_format == "markdown":
+            text_output = to_markdown(result)
+        elif config.output_format == "html":
+            text_output = to_html(result)
+
+        if text_output is not None:
             if config.output_file:
-                with open(config.output_file, "w") as f:
-                    f.write(json_output)
-                console.print(f"\n[green]✅ JSON report saved to {config.output_file}[/]")
+                with open(config.output_file, "w", encoding="utf-8") as f:
+                    f.write(text_output)
+                console.print(f"\n[green]✅ {config.output_format.upper()} report saved to {config.output_file}[/]")
             else:
-                console.print(json_output)
+                print(text_output)
         else:
             output.print_full_report(result)
-
             if config.output_file:
-                json_output = to_json(result)
-                with open(config.output_file, "w") as f:
-                    f.write(json_output)
-                console.print(f"\n[green]✅ Report also saved to {config.output_file}[/]")
+                with open(config.output_file, "w", encoding="utf-8") as f:
+                    f.write(to_json(result))
+                console.print(f"\n[green]✅ JSON report also saved to {config.output_file}[/]")
 
         # Exit code based on severity
         if result.critical_count > 0:
