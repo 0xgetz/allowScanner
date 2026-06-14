@@ -83,9 +83,7 @@ class TestCertificateParsing:
     """Test SSL certificate parsing."""
 
     @pytest.mark.asyncio
-    async def test_valid_certificate_parsed(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_valid_certificate_parsed(self, scanner: SSLScanner) -> None:
         """Test that a valid certificate is parsed correctly."""
         cert = create_mock_cert()
         cipher = ("ECDHE-RSA-AES256-GCM-SHA384", "TLSv1.3", 256)
@@ -106,9 +104,7 @@ class TestCertificateParsing:
         assert cert_info.days_remaining > 0
 
     @pytest.mark.asyncio
-    async def test_certificate_san_parsed(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_certificate_san_parsed(self, scanner: SSLScanner) -> None:
         """Test that SAN entries are parsed correctly."""
         cert = create_mock_cert(san=["example.com", "www.example.com", "api.example.com"])
         ssl_socket = MockSSLSocket(cert=cert, version="TLSv1.3")
@@ -128,9 +124,7 @@ class TestExpiryDetection:
     """Test SSL certificate expiry detection."""
 
     @pytest.mark.asyncio
-    async def test_expired_certificate_detected(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_expired_certificate_detected(self, scanner: SSLScanner) -> None:
         """Test that an expired certificate is detected."""
         cert = create_mock_cert(days_until_expiry=-10)  # Expired 10 days ago
         ssl_socket = MockSSLSocket(cert=cert, version="TLSv1.3")
@@ -146,9 +140,7 @@ class TestExpiryDetection:
         assert expired_vulns[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
-    async def test_expiring_soon_certificate_detected(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_expiring_soon_certificate_detected(self, scanner: SSLScanner) -> None:
         """Test that a certificate expiring soon is detected."""
         cert = create_mock_cert(days_until_expiry=15)  # Expires in 15 days
         ssl_socket = MockSSLSocket(cert=cert, version="TLSv1.3")
@@ -164,9 +156,7 @@ class TestExpiryDetection:
         assert expiring_vulns[0].severity == Severity.MEDIUM
 
     @pytest.mark.asyncio
-    async def test_valid_certificate_no_expiry_vuln(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_valid_certificate_no_expiry_vuln(self, scanner: SSLScanner) -> None:
         """Test that a valid certificate with no expiry issues has no vulns."""
         cert = create_mock_cert(days_until_expiry=365)
         ssl_socket = MockSSLSocket(cert=cert, version="TLSv1.3")
@@ -185,9 +175,7 @@ class TestWeakCipherDetection:
     """Test weak cipher suite detection."""
 
     @pytest.mark.asyncio
-    async def test_weak_cipher_des_detected(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_weak_cipher_des_detected(self, scanner: SSLScanner) -> None:
         """Test that DES cipher is detected as weak."""
         cert = create_mock_cert()
         cipher = ("DES-CBC3-SHA", "TLSv1.2", 168)
@@ -204,9 +192,7 @@ class TestWeakCipherDetection:
         assert weak_vulns[0].severity == Severity.HIGH
 
     @pytest.mark.asyncio
-    async def test_weak_cipher_rc4_detected(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_weak_cipher_rc4_detected(self, scanner: SSLScanner) -> None:
         """Test that RC4 cipher is detected as weak."""
         cert = create_mock_cert()
         cipher = ("RC4-SHA", "TLSv1.2", 128)
@@ -222,9 +208,7 @@ class TestWeakCipherDetection:
         assert len(weak_vulns) > 0
 
     @pytest.mark.asyncio
-    async def test_strong_cipher_no_vuln(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_strong_cipher_no_vuln(self, scanner: SSLScanner) -> None:
         """Test that strong cipher does not trigger vulnerability."""
         cert = create_mock_cert()
         cipher = ("ECDHE-RSA-AES256-GCM-SHA384", "TLSv1.3", 256)
@@ -244,82 +228,61 @@ class TestDeprecatedProtocolDetection:
     """Test deprecated protocol detection."""
 
     @pytest.mark.asyncio
-    async def test_tls_1_0_detected(
-        self, scanner: SSLScanner
-    ) -> None:
-        """Test that TLS 1.0 is detected as deprecated."""
+    async def test_tls_1_0_detected(self, scanner: SSLScanner) -> None:
+        """TLS 1.0 support is flagged as deprecated."""
         cert = create_mock_cert()
-        ssl_socket = MockSSLSocket(cert=cert, version="TLSv1")
-
-        with patch("socket.create_connection") as mock_create:
-            mock_create.return_value = MockSocket(ssl_socket)
-
+        ssl_socket = MockSSLSocket(cert=cert, version="TLSv1.2")
+        with patch("socket.create_connection", return_value=MockSocket(ssl_socket)):
             with patch.object(ssl.SSLContext, "wrap_socket", return_value=ssl_socket):
-                cert_info, vulns = await scanner.scan("https://example.com")
-
-        proto_vulns = [v for v in vulns if "Weak TLS Protocol" in v.name]
+                with patch.object(scanner, "_supported_protocols", return_value=["TLSv1", "TLSv1.2", "TLSv1.3"]):
+                    _, vulns = await scanner.scan("https://example.com")
+        proto_vulns = [v for v in vulns if "Deprecated TLS Protocol Supported: TLSv1" in v.name]
         assert len(proto_vulns) > 0
         assert proto_vulns[0].severity == Severity.HIGH
 
     @pytest.mark.asyncio
-    async def test_tls_1_1_detected(
-        self, scanner: SSLScanner
-    ) -> None:
-        """Test that TLS 1.1 is detected as deprecated."""
+    async def test_tls_1_1_detected(self, scanner: SSLScanner) -> None:
+        """TLS 1.1 support is flagged as deprecated."""
         cert = create_mock_cert()
-        ssl_socket = MockSSLSocket(cert=cert, version="TLSv1.1")
-
-        with patch("socket.create_connection") as mock_create:
-            mock_create.return_value = MockSocket(ssl_socket)
-
+        ssl_socket = MockSSLSocket(cert=cert, version="TLSv1.2")
+        with patch("socket.create_connection", return_value=MockSocket(ssl_socket)):
             with patch.object(ssl.SSLContext, "wrap_socket", return_value=ssl_socket):
-                cert_info, vulns = await scanner.scan("https://example.com")
-
-        proto_vulns = [v for v in vulns if "Weak TLS Protocol" in v.name]
+                with patch.object(scanner, "_supported_protocols", return_value=["TLSv1.1", "TLSv1.2", "TLSv1.3"]):
+                    _, vulns = await scanner.scan("https://example.com")
+        proto_vulns = [v for v in vulns if "Deprecated TLS Protocol Supported" in v.name]
         assert len(proto_vulns) > 0
 
     @pytest.mark.asyncio
-    async def test_tls_1_2_accepted(
-        self, scanner: SSLScanner
-    ) -> None:
-        """Test that TLS 1.2 is accepted and not flagged."""
-        cert = create_mock_cert()
-        ssl_socket = MockSSLSocket(cert=cert, version="TLSv1.2")
-
-        with patch("socket.create_connection") as mock_create:
-            mock_create.return_value = MockSocket(ssl_socket)
-
-            with patch.object(ssl.SSLContext, "wrap_socket", return_value=ssl_socket):
-                cert_info, vulns = await scanner.scan("https://example.com")
-
-        proto_vulns = [v for v in vulns if "Weak TLS Protocol" in v.name]
-        assert len(proto_vulns) == 0
-
-    @pytest.mark.asyncio
-    async def test_tls_1_3_accepted(
-        self, scanner: SSLScanner
-    ) -> None:
-        """Test that TLS 1.3 is accepted and not flagged."""
+    async def test_modern_tls_not_flagged(self, scanner: SSLScanner) -> None:
+        """A TLS 1.2/1.3 server is not flagged for deprecated protocols."""
         cert = create_mock_cert()
         ssl_socket = MockSSLSocket(cert=cert, version="TLSv1.3")
-
-        with patch("socket.create_connection") as mock_create:
-            mock_create.return_value = MockSocket(ssl_socket)
-
+        with patch("socket.create_connection", return_value=MockSocket(ssl_socket)):
             with patch.object(ssl.SSLContext, "wrap_socket", return_value=ssl_socket):
-                cert_info, vulns = await scanner.scan("https://example.com")
+                with patch.object(scanner, "_supported_protocols", return_value=["TLSv1.2", "TLSv1.3"]):
+                    _, vulns = await scanner.scan("https://example.com")
+        assert not [v for v in vulns if "Deprecated TLS Protocol Supported" in v.name]
+        assert not [v for v in vulns if v.name == "TLS 1.3 Not Supported"]
 
-        proto_vulns = [v for v in vulns if "Weak TLS Protocol" in v.name]
-        assert len(proto_vulns) == 0
+    @pytest.mark.asyncio
+    async def test_missing_tls_1_3_flagged_low(self, scanner: SSLScanner) -> None:
+        """A server without TLS 1.3 gets a low-severity note."""
+        cert = create_mock_cert()
+        ssl_socket = MockSSLSocket(cert=cert, version="TLSv1.2")
+        with patch("socket.create_connection", return_value=MockSocket(ssl_socket)):
+            with patch.object(ssl.SSLContext, "wrap_socket", return_value=ssl_socket):
+                with patch.object(scanner, "_supported_protocols", return_value=["TLSv1.2"]):
+                    _, vulns = await scanner.scan("https://example.com")
+        notes = [v for v in vulns if v.name == "TLS 1.3 Not Supported"]
+        assert len(notes) == 1
+        assert notes[0].severity == Severity.LOW
 
 
 class TestSSLErrorHandling:
     """Test SSL scanner error handling."""
 
     @pytest.mark.asyncio
-    async def test_ssl_verification_error(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_ssl_verification_error(self, scanner: SSLScanner) -> None:
         """Test that SSL verification errors are handled."""
         with patch("socket.create_connection") as mock_create:
             mock_socket = MagicMock()
@@ -328,7 +291,9 @@ class TestSSLErrorHandling:
             mock_socket.__enter__ = MagicMock(return_value=mock_socket)
             mock_socket.__exit__ = MagicMock(return_value=False)
 
-            with patch.object(ssl.SSLContext, "wrap_socket", side_effect=ssl.SSLCertVerificationError("certificate verify failed")):
+            with patch.object(
+                ssl.SSLContext, "wrap_socket", side_effect=ssl.SSLCertVerificationError("certificate verify failed")
+            ):
                 cert_info, vulns = await scanner.scan("https://self-signed.example.com")
 
         verification_vulns = [v for v in vulns if "SSL Certificate Verification Failed" in v.name]
@@ -336,9 +301,7 @@ class TestSSLErrorHandling:
         assert verification_vulns[0].severity == Severity.HIGH
 
     @pytest.mark.asyncio
-    async def test_connection_refused(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_connection_refused(self, scanner: SSLScanner) -> None:
         """Test that connection refused is handled gracefully."""
         with patch("socket.create_connection", side_effect=ConnectionRefusedError):
             cert_info, vulns = await scanner.scan("https://example.com")
@@ -347,9 +310,7 @@ class TestSSLErrorHandling:
         assert len(vulns) == 0
 
     @pytest.mark.asyncio
-    async def test_timeout(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_timeout(self, scanner: SSLScanner) -> None:
         """Test that timeout is handled gracefully."""
         with patch("socket.create_connection", side_effect=TimeoutError):
             cert_info, vulns = await scanner.scan("https://example.com")
@@ -358,9 +319,7 @@ class TestSSLErrorHandling:
         assert len(vulns) == 0
 
     @pytest.mark.asyncio
-    async def test_invalid_url(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_invalid_url(self, scanner: SSLScanner) -> None:
         """Test that invalid URL is handled."""
         cert_info, vulns = await scanner.scan("not-a-valid-url")
 
@@ -368,9 +327,7 @@ class TestSSLErrorHandling:
         assert len(vulns) == 0
 
     @pytest.mark.asyncio
-    async def test_http_url(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_http_url(self, scanner: SSLScanner) -> None:
         """Test that HTTP URL returns None certificate."""
         cert_info, vulns = await scanner.scan("http://example.com")
 
@@ -382,9 +339,7 @@ class TestCertificateNone:
     """Test handling when no certificate is returned."""
 
     @pytest.mark.asyncio
-    async def test_no_certificate_returned(
-        self, scanner: SSLScanner
-    ) -> None:
+    async def test_no_certificate_returned(self, scanner: SSLScanner) -> None:
         """Test that None certificate is handled."""
         ssl_socket = MockSSLSocket(cert=None, version="TLSv1.3")
 
