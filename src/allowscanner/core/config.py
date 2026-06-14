@@ -38,6 +38,7 @@ class ScanConfig:
     check_graphql: bool = True
     check_methods: bool = True
     check_takeover: bool = True
+    check_waf: bool = True
 
     # Subdomain wordlist size
     subdomain_wordlist_size: int = 500
