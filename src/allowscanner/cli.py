@@ -99,6 +99,7 @@ Examples:
     scan.add_argument("--no-takeover", action="store_true", help="Skip subdomain takeover detection")
     scan.add_argument("--no-waf", action="store_true", help="Skip WAF/CDN detection")
     scan.add_argument("--no-crawl", action="store_true", help="Skip crawler / surface mapping")
+    scan.add_argument("--no-paramfind", action="store_true", help="Skip hidden-parameter discovery")
     scan.add_argument("--only", help="Only run specific modules (comma-separated)")
 
     return parser.parse_args(argv)
@@ -228,6 +229,7 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_takeover = "takeover" in modules
             config.check_waf = "waf" in modules
             config.check_crawl = "crawl" in modules
+            config.check_paramfind = "paramfind" in modules
         else:
             config.check_ssl = not args.no_ssl
             config.check_dns = not args.no_dns
@@ -247,6 +249,7 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_takeover = not args.no_takeover
             config.check_waf = not args.no_waf
             config.check_crawl = not args.no_crawl
+            config.check_paramfind = not args.no_paramfind
 
         return config
 
@@ -286,7 +289,7 @@ async def async_main(args: argparse.Namespace) -> int:
 
         console.print(f"  [dim]Target:[/] [cyan]{target}[/]")
         console.print(
-            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'secrets', 'graphql', 'methods', 'takeover', 'waf', 'crawl', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
+            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'secrets', 'graphql', 'methods', 'takeover', 'waf', 'crawl', 'paramfind', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
         )
         console.print()
 
