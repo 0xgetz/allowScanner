@@ -14,7 +14,7 @@
 [![Checked with mypy](https://img.shields.io/badge/mypy-strict-blue?style=flat-square)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/badge/lint-ruff-261230?style=flat-square&logo=ruff&logoColor=white)](https://docs.astral.sh/ruff/)
 
-One command, eleven recon and security modules, a single 0–100 score. Async from top to bottom, no GUI, no signup, runs in CI.
+One command, sixteen recon and security modules, a single 0–100 score. Async from top to bottom, no GUI, no signup, runs in CI.
 
 </div>
 
@@ -29,11 +29,15 @@ One command, eleven recon and security modules, a single 0–100 score. Async fr
 | 🔑 **Admin panels** | Discovers exposed admin / login interfaces |
 | 🧭 **Content discovery** | Wordlist path fuzzing with soft-404 calibration; bring your own list with `--wordlist` |
 | 🔌 **Port scan** | Async TCP connect scan of 25+ high-signal service ports (Redis, MongoDB, MySQL, Docker API, RDP, SMB…) |
+| 🔑 **Secret & endpoint discovery** | Greps HTML and linked JS for leaked API keys, tokens, private keys, and hidden endpoints |
+| 🧩 **GraphQL introspection** | Finds GraphQL endpoints and flags exposed introspection |
+| 🚦 **HTTP method audit** | Detects dangerous verbs (PUT, DELETE, TRACE/XST, PATCH, CONNECT) |
 | 🛡️ **Security headers** | CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy |
 | 🔐 **SSL/TLS audit** | Certificate validity, expiry, protocol version, cipher, SANs |
 | 🌐 **DNS security** | DNSSEC, SPF, DMARC, DKIM, CAA records |
 | 🛠️ **Technology detection** | 30+ frameworks/servers: WordPress, React, Laravel, Nginx, Cloudflare, … |
 | 🔎 **Subdomain enum** | DNS-based discovery from a curated common-prefix list |
+| 🪝 **Subdomain takeover** | Flags dangling CNAMEs matching known unclaimed-service fingerprints |
 | 🍪 **Cookie security** | Secure, HttpOnly, SameSite attribute checks |
 | 🔗 **CORS analysis** | Wildcard, reflected origin, null origin, credentials misconfiguration |
 | 📊 **Security score** | Single 0–100 score derived from finding severity |
@@ -107,9 +111,11 @@ Options:
 Module toggles:
   --no-ssl  --no-dns  --no-headers  --no-vulns  --no-admin  --no-sensitive
   --no-tech  --no-subdomains  --no-ports  --no-fuzz  --no-cors  --no-cookies
+  --no-secrets  --no-graphql  --no-methods  --no-takeover
   --only MODULES          Run only these (comma-separated). Modules:
-                          ssl, dns, headers, vulns, tech, subdomains,
-                          ports, fuzz, cors, cookies, admin, sensitive
+                          ssl, dns, headers, vulns, tech, subdomains, ports,
+                          fuzz, secrets, graphql, methods, takeover, cors,
+                          cookies, admin, sensitive
 ```
 
 ## 📊 Example output
@@ -173,6 +179,10 @@ src/allowscanner/
 │   ├── subdomain.py     # Subdomain enumeration
 │   ├── ports.py         # TCP port scanner
 │   ├── fuzz.py          # Content discovery / path fuzzing
+│   ├── secrets.py       # JS/HTML secret + endpoint discovery
+│   ├── graphql.py       # GraphQL introspection check
+│   ├── methods.py       # HTTP method / verb audit
+│   ├── takeover.py      # Subdomain takeover detection
 │   ├── cors.py          # CORS misconfiguration checks
 │   └── cookies.py       # Cookie attribute checks
 └── formatters/          # JSON output
