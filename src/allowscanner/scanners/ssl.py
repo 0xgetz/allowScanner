@@ -162,16 +162,32 @@ class SSLScanner:
                             )
                         )
 
-                # Check for weak protocols
-                proto = ssock.version() or ""
-                if proto in ("TLSv1", "TLSv1.1", "SSLv3", "SSLv2"):
+                # Actively probe which TLS protocol versions the server accepts
+                supported = self._supported_protocols(hostname)
+                cert_info.supported_protocols = supported
+                for weak_proto in ("TLSv1", "TLSv1.1"):
+                    if weak_proto in supported:
+                        vulns.append(
+                            Vulnerability(
+                                name=f"Deprecated TLS Protocol Supported: {weak_proto}",
+                                severity=Severity.HIGH,
+                                url=url,
+                                description=(
+                                    f"Server still accepts {weak_proto} connections "
+                                    "(deprecated; disallowed by PCI-DSS and modern browsers)"
+                                ),
+                                recommendation="Disable TLS 1.0/1.1 and require TLS 1.2 or higher",
+                                cwe="CWE-326",
+                            )
+                        )
+                if supported and "TLSv1.3" not in supported:
                     vulns.append(
                         Vulnerability(
-                            name=f"Weak TLS Protocol: {proto}",
-                            severity=Severity.HIGH,
+                            name="TLS 1.3 Not Supported",
+                            severity=Severity.LOW,
                             url=url,
-                            description=f"Server supports deprecated protocol {proto}",
-                            recommendation="Disable TLS 1.0/1.1, only allow TLS 1.2+",
+                            description="Server does not negotiate TLS 1.3",
+                            recommendation="Enable TLS 1.3 for stronger security and better performance",
                             cwe="CWE-326",
                         )
                     )
@@ -228,3 +244,40 @@ class SSLScanner:
             raise SSLError("Unexpected error during SSL scan", host=hostname, original_error=e) from e
 
         return cert_info if cert_info.issuer else None, vulns
+
+    def _supported_protocols(self, hostname: str) -> list[str]:
+        """Actively probe which TLS versions the server will negotiate."""
+        versions = [
+            ("TLSv1", ssl.TLSVersion.TLSv1),
+            ("TLSv1.1", ssl.TLSVersion.TLSv1_1),
+            ("TLSv1.2", ssl.TLSVersion.TLSv1_2),
+            ("TLSv1.3", ssl.TLSVersion.TLSv1_3),
+        ]
+        supported: list[str] = []
+        for label, version in versions:
+            if self._probe_protocol(hostname, version):
+                supported.append(label)
+        return supported
+
+    def _probe_protocol(self, hostname: str, version: ssl.TLSVersion) -> bool:
+        """Return True if the server completes a handshake pinned to ``version``.
+
+        Note: the local OpenSSL build must support the version to test it; if it
+        was compiled without TLS 1.0/1.1 those probes silently return False.
+        """
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        try:
+            ctx.minimum_version = version
+            ctx.maximum_version = version
+        except (ValueError, OSError):
+            return False
+        try:
+            with (
+                socket.create_connection((hostname, 443), timeout=8) as raw,
+                ctx.wrap_socket(raw, server_hostname=hostname) as tls,
+            ):
+                return tls.version() is not None
+        except (OSError, ssl.SSLError, ValueError):
+            return False
