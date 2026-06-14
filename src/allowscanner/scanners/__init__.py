@@ -15,6 +15,7 @@ from .subdomain import SubdomainScanner
 from .takeover import TakeoverScanner
 from .tech import TechScanner
 from .vuln import VulnerabilityScanner
+from .waf import WafScanner
 
 __all__ = [
     "CORSScanner",
@@ -32,4 +33,5 @@ __all__ = [
     "TakeoverScanner",
     "TechScanner",
     "VulnerabilityScanner",
+    "WafScanner",
 ]
