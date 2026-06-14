@@ -29,6 +29,7 @@ One command, seventeen recon and security modules, a single 0–100 score. Async
 | 🔑 **Admin panels** | Discovers exposed admin / login interfaces |
 | 🧭 **Content discovery** | Wordlist path fuzzing with soft-404 calibration; bring your own list with `--wordlist` |
 | 🕸️ **Crawler / surface mapping** | Scope-aware BFS crawl that maps reachable pages, forms, and parameter names before testing |
+| 🧪 **Parameter discovery** | Probes for hidden query params (Arjun-style) via reflection + status-change signals, bisected to stay low-noise |
 | 🔌 **Port scan** | Async TCP connect scan of 25+ high-signal service ports (Redis, MongoDB, MySQL, Docker API, RDP, SMB…) |
 | 🔑 **Secret & endpoint discovery** | Greps HTML and linked JS for leaked API keys, tokens, private keys, and hidden endpoints |
 | 🧩 **GraphQL introspection** | Finds GraphQL endpoints and flags exposed introspection |
@@ -128,6 +129,7 @@ Scope & surface:
       --scope HOST        Restrict to host(s) (repeatable)
       --exclude REGEX     Skip URLs matching regex (repeatable)
       --no-crawl          Skip the crawler / surface mapping
+      --no-paramfind      Skip hidden-parameter discovery
 
 Triage:
       --suppress FILE     Drop findings matching an .allowscanignore file
@@ -136,11 +138,11 @@ Triage:
 Module toggles:
   --no-ssl  --no-dns  --no-headers  --no-vulns  --no-admin  --no-sensitive
   --no-tech  --no-subdomains  --no-ports  --no-fuzz  --no-cors  --no-cookies
-  --no-secrets  --no-graphql  --no-methods  --no-takeover  --no-waf
+  --no-secrets  --no-graphql  --no-methods  --no-takeover  --no-waf  --no-paramfind
   --only MODULES          Run only these (comma-separated). Modules:
                           ssl, dns, headers, vulns, tech, subdomains, ports,
                           fuzz, secrets, graphql, methods, takeover, waf,
-                          crawl, cors, cookies, admin, sensitive
+                          crawl, paramfind, cors, cookies, admin, sensitive
 ```
 
 ## 📊 Example output
@@ -213,6 +215,7 @@ src/allowscanner/
 │   ├── takeover.py      # Subdomain takeover detection
 │   ├── waf.py           # WAF / CDN detection
 │   ├── crawler.py       # Scope-aware crawler / attack-surface mapper
+│   ├── paramfind.py     # Hidden query-parameter discovery
 │   ├── cors.py          # CORS misconfiguration checks
 │   └── cookies.py       # Cookie attribute checks
 └── formatters/          # JSON / Markdown / HTML / SARIF output
@@ -243,13 +246,14 @@ The goal is to graduate from a *checklist scanner* into an **accurate, workflow-
 - **False-positive suppression** — `.allowscanignore` + stable per-finding fingerprint
 - **SARIF output** (`-f sarif`) + a composite **GitHub Action** for code scanning
 - **Baseline diff** (`--baseline`) — what's new since the last run
+- **Parameter discovery (Arjun-style)** — finds hidden query params via reflection + status-change signals, bisected to stay low-noise
 - JSON / Markdown / HTML reports, Docker image, CI (ruff + mypy strict + pytest on 3.10–3.13)
 
 ### 🎯 Next — accuracy (what makes a scanner trusted, not binned)
 
 - **OOB / out-of-band verification (interactsh-style)** — DNS/HTTP callback server to confirm *blind* SSRF, blind SQLi, RCE, and OOB XXE. The single biggest accuracy differentiator. Needs hosted or self-hosted callback infra, so it ships **opt-in**.
 - **Multi-signal + time-based verification** — SQLi via boolean + time-delay (not just error strings); XSS confirmed by reflection context (attribute / script / HTML) before claiming.
-- **Parameter discovery (Arjun-style)** — find hidden params, then fuzz each with context-aware payloads.
+- **Context-aware param fuzzing** — feed discovered params into injection tests with payloads chosen by reflection context.
 
 ### 🎯 Next — coverage
 
