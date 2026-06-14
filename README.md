@@ -194,6 +194,9 @@ src/allowscanner/
 │   ├── config.py        # Validated scan configuration
 │   ├── exceptions.py    # Exception hierarchy
 │   └── logging.py       # Structured logging + correlation IDs
+│   ├── scope.py         # In-scope / exclude rules
+│   ├── suppress.py      # .allowscanignore false-positive suppression
+│   └── diff.py          # Baseline diffing by finding fingerprint
 ├── scanners/
 │   ├── http.py          # Async HTTP client + rate limiter
 │   ├── vuln.py          # Injection / file / admin checks
@@ -209,9 +212,10 @@ src/allowscanner/
 │   ├── methods.py       # HTTP method / verb audit
 │   ├── takeover.py      # Subdomain takeover detection
 │   ├── waf.py           # WAF / CDN detection
+│   ├── crawler.py       # Scope-aware crawler / attack-surface mapper
 │   ├── cors.py          # CORS misconfiguration checks
 │   └── cookies.py       # Cookie attribute checks
-└── formatters/          # JSON / Markdown / HTML output
+└── formatters/          # JSON / Markdown / HTML / SARIF output
 ```
 
 ## 🧪 Development
@@ -225,6 +229,44 @@ pytest --cov=allowscanner
 
 CI runs lint (Ruff), strict type-checking (mypy), the full test suite across
 Python 3.10–3.13, and a Docker build on every push.
+
+## 🗺️ Roadmap
+
+The goal is to graduate from a *checklist scanner* into an **accurate, workflow-native** platform. Three axes, ordered by impact.
+
+### ✅ Shipped
+
+- 17 async recon/scan modules + a scope-aware **crawler / surface mapper**
+- **Scope control** — host allowlist + path-regex excludes (`--scope`, `--exclude`)
+- **Authenticated scanning** — `-H/--header`, `--cookie`, `--bearer`
+- **Adaptive rate limiting** — honors HTTP 429 + `Retry-After`, auto-backs off
+- **False-positive suppression** — `.allowscanignore` + stable per-finding fingerprint
+- **SARIF output** (`-f sarif`) + a composite **GitHub Action** for code scanning
+- **Baseline diff** (`--baseline`) — what's new since the last run
+- JSON / Markdown / HTML reports, Docker image, CI (ruff + mypy strict + pytest on 3.10–3.13)
+
+### 🎯 Next — accuracy (what makes a scanner trusted, not binned)
+
+- **OOB / out-of-band verification (interactsh-style)** — DNS/HTTP callback server to confirm *blind* SSRF, blind SQLi, RCE, and OOB XXE. The single biggest accuracy differentiator. Needs hosted or self-hosted callback infra, so it ships **opt-in**.
+- **Multi-signal + time-based verification** — SQLi via boolean + time-delay (not just error strings); XSS confirmed by reflection context (attribute / script / HTML) before claiming.
+- **Parameter discovery (Arjun-style)** — find hidden params, then fuzz each with context-aware payloads.
+
+### 🎯 Next — coverage
+
+- **Scripted login flows** — beyond static tokens: login + session refresh, since most real bugs live behind auth.
+- **JS-rendered route discovery** — follow routes that only appear after client-side rendering.
+
+### 🎯 Next — workflow & distribution
+
+- **YAML template engine (nuclei-style)** — let the community write and share templates. The biggest long-term adoption lever; turns "our checks" into "everyone's platform." A standalone design commitment (schema, loader, execution sandbox).
+- **Distribution** — PyPI (Trusted Publisher pending), multi-arch GHCR image, pre-commit hook, Homebrew tap, tagged releases + auto changelog.
+- **Resume scan** — checkpoint and continue an interrupted run.
+
+#### Honest caveats
+
+- OOB needs a callback server (public interactsh or self-hosted): operational cost + ethics → opt-in only.
+- Crawler + auth widen the surface you can trigger; both stay locked to scope with polite defaults.
+- The template engine is a real design commitment, but once built it's the repo's largest asset.
 
 ## ⚠️ Responsible use
 
