@@ -2,6 +2,7 @@
 
 from .cookies import CookieScanner
 from .cors import CORSScanner
+from .crawler import Crawler
 from .dns import DNSScanner
 from .fuzz import FuzzScanner
 from .graphql import GraphQLScanner
@@ -20,6 +21,7 @@ from .waf import WafScanner
 __all__ = [
     "CORSScanner",
     "CookieScanner",
+    "Crawler",
     "DNSScanner",
     "FuzzScanner",
     "GraphQLScanner",
