@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="352" viewBox="0 0 560 352" font-family="ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace" font-size="15">
+<rect width="560" height="352" rx="10" fill="#0d1117"/>
+<rect width="560" height="40" rx="10" fill="#161b22"/>
+<rect y="30" width="560" height="10" fill="#161b22"/>
+<circle cx="22" cy="20" r="6" fill="#f85149"/><circle cx="42" cy="20" r="6" fill="#d29922"/><circle cx="62" cy="20" r="6" fill="#3fb950"/>
+<text x="280" y="25" fill="#8b949e" text-anchor="middle" font-size="13">allowscanner — doctor</text>
+<text x="26" y="60" xml:space="preserve"><tspan fill="#7ee787">$ </tspan><tspan fill="#e6edf3">allowscanner --doctor</tspan></text>
+<text x="26" y="106" xml:space="preserve"><tspan fill="#e6edf3">allowScanner environment check</tspan></text>
+<text x="26" y="152" xml:space="preserve"><tspan fill="#3fb950">PASS  </tspan><tspan fill="#e6edf3">Python 3.12.12 (need &gt;= 3.10)</tspan></text>
+<text x="26" y="175" xml:space="preserve"><tspan fill="#56d4dd">INFO  </tspan><tspan fill="#e6edf3">allowScanner 2.0.0</tspan></text>
+<text x="26" y="198" xml:space="preserve"><tspan fill="#3fb950">PASS  </tspan><tspan fill="#e6edf3">dependency 'aiohttp' (3.11.11)</tspan></text>
+<text x="26" y="221" xml:space="preserve"><tspan fill="#3fb950">PASS  </tspan><tspan fill="#e6edf3">dependency 'dnspython' (2.7.0)</tspan></text>
+<text x="26" y="244" xml:space="preserve"><tspan fill="#3fb950">PASS  </tspan><tspan fill="#e6edf3">dependency 'rich' (13.9.4)</tspan></text>
+<text x="26" y="267" xml:space="preserve"><tspan fill="#3fb950">PASS  </tspan><tspan fill="#e6edf3">DNS resolution (example.com)</tspan></text>
+<text x="26" y="313" xml:space="preserve"><tspan fill="#3fb950">All required checks passed.</tspan></text>
+</svg>
