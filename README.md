@@ -14,7 +14,7 @@
 [![Checked with mypy](https://img.shields.io/badge/mypy-strict-blue?style=flat-square)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/badge/lint-ruff-261230?style=flat-square&logo=ruff&logoColor=white)](https://docs.astral.sh/ruff/)
 
-One command, sixteen recon and security modules, a single 0–100 score. Async from top to bottom, no GUI, no signup, runs in CI.
+One command, seventeen recon and security modules, a single 0–100 score. Async from top to bottom, no GUI, no signup, runs in CI.
 
 </div>
 
@@ -33,7 +33,8 @@ One command, sixteen recon and security modules, a single 0–100 score. Async f
 | 🧩 **GraphQL introspection** | Finds GraphQL endpoints and flags exposed introspection |
 | 🚦 **HTTP method audit** | Detects dangerous verbs (PUT, DELETE, TRACE/XST, PATCH, CONNECT) |
 | 🛡️ **Security headers** | CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy |
-| 🔐 **SSL/TLS audit** | Certificate validity, expiry, protocol version, cipher, SANs |
+| 🔐 **SSL/TLS audit** | Certificate validity, expiry, SANs; **actively probes** for deprecated TLS 1.0/1.1 support and weak ciphers |
+| 🧱 **WAF/CDN detection** | Fingerprints Cloudflare, Akamai, Imperva, Sucuri, F5, AWS, Fastly + active blocking probe |
 | 🌐 **DNS security** | DNSSEC, SPF, DMARC, DKIM, CAA records |
 | 🛠️ **Technology detection** | 30+ frameworks/servers: WordPress, React, Laravel, Nginx, Cloudflare, … |
 | 🔎 **Subdomain enum** | DNS-based discovery from a curated common-prefix list |
@@ -97,7 +98,7 @@ allowscanner [OPTIONS] URL
 
 Options:
   -o, --output FILE       Save report to file
-  -f, --format FORMAT     Output format: terminal | json | markdown
+  -f, --format FORMAT     Output format: terminal | json | markdown | html
   -c, --concurrency N     Max concurrent requests (default: 50)
   -t, --timeout N         Request timeout in seconds (default: 15)
   -r, --rate-limit N      Max requests per second (default: unlimited)
@@ -111,11 +112,11 @@ Options:
 Module toggles:
   --no-ssl  --no-dns  --no-headers  --no-vulns  --no-admin  --no-sensitive
   --no-tech  --no-subdomains  --no-ports  --no-fuzz  --no-cors  --no-cookies
-  --no-secrets  --no-graphql  --no-methods  --no-takeover
+  --no-secrets  --no-graphql  --no-methods  --no-takeover  --no-waf
   --only MODULES          Run only these (comma-separated). Modules:
                           ssl, dns, headers, vulns, tech, subdomains, ports,
-                          fuzz, secrets, graphql, methods, takeover, cors,
-                          cookies, admin, sensitive
+                          fuzz, secrets, graphql, methods, takeover, waf,
+                          cors, cookies, admin, sensitive
 ```
 
 ## 📊 Example output
@@ -183,9 +184,10 @@ src/allowscanner/
 │   ├── graphql.py       # GraphQL introspection check
 │   ├── methods.py       # HTTP method / verb audit
 │   ├── takeover.py      # Subdomain takeover detection
+│   ├── waf.py           # WAF / CDN detection
 │   ├── cors.py          # CORS misconfiguration checks
 │   └── cookies.py       # Cookie attribute checks
-└── formatters/          # JSON output
+└── formatters/          # JSON / Markdown / HTML output
 ```
 
 ## 🧪 Development
