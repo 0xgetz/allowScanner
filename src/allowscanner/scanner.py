@@ -23,6 +23,7 @@ from .scanners import (
     GraphQLScanner,
     HeaderScanner,
     HttpMethodScanner,
+    ParamFinder,
     PortScanner,
     SecretScanner,
     SSLScanner,
@@ -159,6 +160,8 @@ class AllowScanner:
                 tasks.append(self._run_ports())
             if self.config.check_fuzz:
                 tasks.append(self._run_fuzz(http))
+            if self.config.check_paramfind:
+                tasks.append(self._run_paramfind(http))
             if self.config.check_secrets:
                 tasks.append(self._run_secrets(http))
             if self.config.check_graphql:
@@ -413,3 +416,14 @@ class AllowScanner:
             logger.debug(f"Crawl completed: {len(discovered)} URLs discovered")
         except Exception as e:
             logger.error(f"Crawler failed: {e}")
+
+    async def _run_paramfind(self, http: HttpClient) -> None:
+        """Discover hidden query parameters on the target."""
+        try:
+            finder = ParamFinder(wordlist=self.config.param_wordlist)
+            _found, vulns = await finder.scan(self.target_url, http)
+            self.result.vulnerabilities.extend(vulns)
+            logger.debug(f"Param discovery completed: {len(vulns)} findings")
+        except Exception as e:
+            logger.error(f"Param finder failed: {e}")
+            raise
