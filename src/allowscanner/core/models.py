@@ -41,6 +41,14 @@ class Vulnerability:
     cwe: str | None = None
     cvss: float | None = None
 
+    @property
+    def fingerprint(self) -> str:
+        """Stable short hash identifying this finding across scans."""
+        import hashlib
+
+        raw = f"{self.name}|{self.url}|{self.cwe or ''}"
+        return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+
 
 @dataclass
 class Technology:
@@ -85,6 +93,7 @@ class ScanResult:
     subdomains: list[str] = field(default_factory=list)
     open_ports: list[int] = field(default_factory=list)
     response_headers: dict[str, str] = field(default_factory=dict)
+    discovered_urls: list[str] = field(default_factory=list)
 
     @property
     def critical_count(self) -> int:
