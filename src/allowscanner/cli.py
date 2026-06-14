@@ -10,9 +10,10 @@ from urllib.parse import urlparse
 from rich.console import Console
 
 from .core.config import ScanConfig
+from .core.diff import diff_against_baseline
 from .core.exceptions import AllowScannerError, ConfigurationError, ValidationError
 from .core.logging import get_logger
-from .formatters import to_html, to_json, to_markdown
+from .formatters import to_html, to_json, to_markdown, to_sarif
 from .output import TerminalOutput
 from .scanner import AllowScanner
 
@@ -47,7 +48,7 @@ Examples:
     parser.add_argument(
         "-f",
         "--format",
-        choices=["terminal", "json", "markdown", "html"],
+        choices=["terminal", "json", "markdown", "html", "sarif"],
         default="terminal",
         help="Output format (default: terminal)",
     )
@@ -66,6 +67,17 @@ Examples:
     )
     parser.add_argument("--ports", help="Comma-separated TCP ports to scan (default: common service ports)")
     parser.add_argument("-w", "--wordlist", help="Path to a custom path-fuzzing wordlist (one path per line)")
+    parser.add_argument("-H", "--header", action="append", metavar="K:V", help="Extra request header (repeatable)")
+    parser.add_argument("--cookie", help="Cookie header value sent with every request")
+    parser.add_argument("--bearer", help="Bearer token (sets Authorization: Bearer <token>)")
+    parser.add_argument(
+        "--scope", action="append", metavar="HOST", help="In-scope host (repeatable); defaults to target host"
+    )
+    parser.add_argument(
+        "--exclude", action="append", metavar="REGEX", help="Exclude URLs matching this regex (repeatable)"
+    )
+    parser.add_argument("--suppress", metavar="FILE", help="Suppression file (default: ./.allowscanignore)")
+    parser.add_argument("--baseline", metavar="FILE", help="Baseline JSON report to diff against")
 
     # Module toggles
     scan = parser.add_argument_group("scan modules")
@@ -86,6 +98,7 @@ Examples:
     scan.add_argument("--no-methods", action="store_true", help="Skip HTTP method audit")
     scan.add_argument("--no-takeover", action="store_true", help="Skip subdomain takeover detection")
     scan.add_argument("--no-waf", action="store_true", help="Skip WAF/CDN detection")
+    scan.add_argument("--no-crawl", action="store_true", help="Skip crawler / surface mapping")
     scan.add_argument("--only", help="Only run specific modules (comma-separated)")
 
     return parser.parse_args(argv)
@@ -178,6 +191,23 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
                     f"Could not read wordlist: {args.wordlist}", config_key="wordlist", suggestion="Check the file path"
                 ) from e
 
+        headers: dict[str, str] = {}
+        for item in args.header or []:
+            if ":" in item:
+                key, _, value = item.partition(":")
+                headers[key.strip()] = value.strip()
+        if args.cookie:
+            headers["Cookie"] = args.cookie
+        if args.bearer:
+            headers["Authorization"] = f"Bearer {args.bearer}"
+        config.extra_headers = headers
+        if args.scope:
+            config.scope_hosts = args.scope
+        if args.exclude:
+            config.exclude_patterns = args.exclude
+        config.suppress_file = args.suppress
+        config.baseline_file = args.baseline
+
         if args.only:
             modules = set(args.only.split(","))
             config.check_ssl = "ssl" in modules
@@ -197,6 +227,7 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_methods = "methods" in modules
             config.check_takeover = "takeover" in modules
             config.check_waf = "waf" in modules
+            config.check_crawl = "crawl" in modules
         else:
             config.check_ssl = not args.no_ssl
             config.check_dns = not args.no_dns
@@ -215,6 +246,7 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_methods = not args.no_methods
             config.check_takeover = not args.no_takeover
             config.check_waf = not args.no_waf
+            config.check_crawl = not args.no_crawl
 
         return config
 
@@ -254,7 +286,7 @@ async def async_main(args: argparse.Namespace) -> int:
 
         console.print(f"  [dim]Target:[/] [cyan]{target}[/]")
         console.print(
-            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'secrets', 'graphql', 'methods', 'takeover', 'waf', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
+            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'secrets', 'graphql', 'methods', 'takeover', 'waf', 'crawl', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
         )
         console.print()
 
@@ -274,6 +306,8 @@ async def async_main(args: argparse.Namespace) -> int:
             text_output = to_markdown(result)
         elif config.output_format == "html":
             text_output = to_html(result)
+        elif config.output_format == "sarif":
+            text_output = to_sarif(result)
 
         if text_output is not None:
             if config.output_file:
@@ -288,6 +322,15 @@ async def async_main(args: argparse.Namespace) -> int:
                 with open(config.output_file, "w", encoding="utf-8") as f:
                     f.write(to_json(result))
                 console.print(f"\n[green]✅ JSON report also saved to {config.output_file}[/]")
+
+        if config.baseline_file and (config.output_format == "terminal" or config.output_file):
+            diff = diff_against_baseline(result, config.baseline_file)
+            console.print("\n[bold]Baseline diff:[/]")
+            console.print(
+                f"  [red]New:[/] {len(diff.new)}  [green]Fixed:[/] {diff.fixed}  [dim]Unchanged:[/] {diff.unchanged}"
+            )
+            for line in diff.new:
+                console.print(f"    [red]+[/] {line}")
 
         # Exit code based on severity
         if result.critical_count > 0:
