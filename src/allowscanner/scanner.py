@@ -17,10 +17,14 @@ from .scanners import (
     CORSScanner,
     DNSScanner,
     FuzzScanner,
+    GraphQLScanner,
     HeaderScanner,
+    HttpMethodScanner,
     PortScanner,
+    SecretScanner,
     SSLScanner,
     SubdomainScanner,
+    TakeoverScanner,
     TechScanner,
     VulnerabilityScanner,
 )
@@ -148,6 +152,12 @@ class AllowScanner:
                 tasks.append(self._run_ports())
             if self.config.check_fuzz:
                 tasks.append(self._run_fuzz(http))
+            if self.config.check_secrets:
+                tasks.append(self._run_secrets(http))
+            if self.config.check_graphql:
+                tasks.append(self._run_graphql(http))
+            if self.config.check_methods:
+                tasks.append(self._run_methods(http))
 
             # Run all tasks with error recovery
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -158,6 +168,9 @@ class AllowScanner:
                     logger.error(f"Scanner task {i} failed: {result}")
                     # Add error as vulnerability for visibility
                     self.result.vulnerabilities.append(self._create_error_vulnerability(result, tasks[i].__name__))
+
+            if self.config.check_takeover:
+                await self._run_takeover(http)
 
         except Exception as e:
             logger.error(f"Critical error during scan: {e}")
@@ -308,3 +321,47 @@ class AllowScanner:
         except Exception as e:
             logger.error(f"Fuzz scanner failed: {e}")
             raise
+
+    async def _run_secrets(self, http: HttpClient) -> None:
+        """Run secret / endpoint discovery scanner."""
+        try:
+            scanner = SecretScanner(concurrency=self.config.concurrency)
+            vulns = await scanner.scan(self.target_url, http)
+            self.result.vulnerabilities.extend(vulns)
+            logger.debug(f"Secret scan completed: {len(vulns)} findings")
+        except Exception as e:
+            logger.error(f"Secret scanner failed: {e}")
+            raise
+
+    async def _run_graphql(self, http: HttpClient) -> None:
+        """Run GraphQL introspection scanner."""
+        try:
+            scanner = GraphQLScanner()
+            vulns = await scanner.scan(self.target_url, http)
+            self.result.vulnerabilities.extend(vulns)
+            logger.debug(f"GraphQL scan completed: {len(vulns)} findings")
+        except Exception as e:
+            logger.error(f"GraphQL scanner failed: {e}")
+            raise
+
+    async def _run_methods(self, http: HttpClient) -> None:
+        """Run HTTP method audit."""
+        try:
+            scanner = HttpMethodScanner()
+            vulns = await scanner.scan(self.target_url, http)
+            self.result.vulnerabilities.extend(vulns)
+            logger.debug(f"Method audit completed: {len(vulns)} findings")
+        except Exception as e:
+            logger.error(f"Method scanner failed: {e}")
+            raise
+
+    async def _run_takeover(self, http: HttpClient) -> None:
+        """Run subdomain takeover detection over the base domain and discovered subdomains."""
+        try:
+            hosts = [self.base_domain, *self.result.subdomains]
+            scanner = TakeoverScanner(concurrency=self.config.concurrency)
+            vulns = await scanner.scan(hosts, http)
+            self.result.vulnerabilities.extend(vulns)
+            logger.debug(f"Takeover scan completed: {len(vulns)} findings")
+        except Exception as e:
+            logger.error(f"Takeover scanner failed: {e}")
