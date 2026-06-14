@@ -64,15 +64,21 @@ class TestParseArgsValid:
 
     def test_multiple_flags(self) -> None:
         """Test that multiple flags are parsed correctly."""
-        args = parse_args([
-            "https://example.com",
-            "-c", "100",
-            "-t", "30",
-            "-o", "report.json",
-            "-f", "json",
-            "-v",
-            "--no-color",
-        ])
+        args = parse_args(
+            [
+                "https://example.com",
+                "-c",
+                "100",
+                "-t",
+                "30",
+                "-o",
+                "report.json",
+                "-f",
+                "json",
+                "-v",
+                "--no-color",
+            ]
+        )
         assert args.concurrency == 100
         assert args.timeout == 30
         assert args.output == "report.json"
@@ -149,9 +155,10 @@ class TestParseArgsInvalid:
             parse_args(["https://example.com", "-f", "xml"])
 
     def test_missing_url(self) -> None:
-        """Test that missing URL raises error."""
-        with pytest.raises(SystemExit):
-            parse_args([])
+        """URL is optional at parse time; main() handles a missing target."""
+        args = parse_args([])
+        assert args.url is None
+        assert args.doctor is False
 
     def test_invalid_concurrency_type(self) -> None:
         """Test that invalid concurrency type raises error."""
@@ -227,12 +234,14 @@ class TestBuildConfig:
 
     def test_config_disable_multiple_modules(self) -> None:
         """Test that config disables multiple modules."""
-        args = parse_args([
-            "https://example.com",
-            "--no-ssl",
-            "--no-dns",
-            "--no-headers",
-        ])
+        args = parse_args(
+            [
+                "https://example.com",
+                "--no-ssl",
+                "--no-dns",
+                "--no-headers",
+            ]
+        )
         config = build_config(args)
 
         assert config.check_ssl is False
@@ -241,11 +250,14 @@ class TestBuildConfig:
 
     def test_config_only_option_overrides(self) -> None:
         """Test that --only option overrides other module settings."""
-        args = parse_args([
-            "https://example.com",
-            "--no-ssl",  # This should be ignored when --only is set
-            "--only", "ssl,dns",
-        ])
+        args = parse_args(
+            [
+                "https://example.com",
+                "--no-ssl",  # This should be ignored when --only is set
+                "--only",
+                "ssl,dns",
+            ]
+        )
         config = build_config(args)
 
         assert config.check_ssl is True  # Enabled by --only
