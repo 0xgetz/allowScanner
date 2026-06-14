@@ -16,7 +16,9 @@ from .scanners import (
     CookieScanner,
     CORSScanner,
     DNSScanner,
+    FuzzScanner,
     HeaderScanner,
+    PortScanner,
     SSLScanner,
     SubdomainScanner,
     TechScanner,
@@ -142,6 +144,10 @@ class AllowScanner:
                 tasks.append(self._run_cors(http))
             if self.config.check_cookies:
                 tasks.append(self._run_cookies(http))
+            if self.config.check_ports:
+                tasks.append(self._run_ports())
+            if self.config.check_fuzz:
+                tasks.append(self._run_fuzz(http))
 
             # Run all tasks with error recovery
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -278,4 +284,27 @@ class AllowScanner:
             logger.debug(f"Cookie scan completed: {len(vulns)} issues found")
         except Exception as e:
             logger.error(f"Cookie scanner failed: {e}")
+            raise
+
+    async def _run_ports(self) -> None:
+        """Run TCP port scanner."""
+        try:
+            scanner = PortScanner(ports=self.config.port_list, concurrency=self.config.concurrency)
+            open_ports, vulns = await scanner.scan(self.base_domain)
+            self.result.open_ports = open_ports
+            self.result.vulnerabilities.extend(vulns)
+            logger.debug(f"Port scan completed: {len(open_ports)} open ports")
+        except Exception as e:
+            logger.error(f"Port scanner failed: {e}")
+            raise
+
+    async def _run_fuzz(self, http: HttpClient) -> None:
+        """Run content discovery / fuzzing scanner."""
+        try:
+            scanner = FuzzScanner(wordlist=self.config.fuzz_wordlist, concurrency=self.config.concurrency)
+            vulns = await scanner.scan(self.target_url, http)
+            self.result.vulnerabilities.extend(vulns)
+            logger.debug(f"Fuzzing completed: {len(vulns)} findings")
+        except Exception as e:
+            logger.error(f"Fuzz scanner failed: {e}")
             raise
