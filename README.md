@@ -28,6 +28,7 @@ One command, seventeen recon and security modules, a single 0–100 score. Async
 | 📂 **Sensitive files** | `.env`, `.git`, `phpinfo.php`, Spring Actuator, Swagger, backup files, and more |
 | 🔑 **Admin panels** | Discovers exposed admin / login interfaces |
 | 🧭 **Content discovery** | Wordlist path fuzzing with soft-404 calibration; bring your own list with `--wordlist` |
+| 🕸️ **Crawler / surface mapping** | Scope-aware BFS crawl that maps reachable pages, forms, and parameter names before testing |
 | 🔌 **Port scan** | Async TCP connect scan of 25+ high-signal service ports (Redis, MongoDB, MySQL, Docker API, RDP, SMB…) |
 | 🔑 **Secret & endpoint discovery** | Greps HTML and linked JS for leaked API keys, tokens, private keys, and hidden endpoints |
 | 🧩 **GraphQL introspection** | Finds GraphQL endpoints and flags exposed introspection |
@@ -82,6 +83,15 @@ allowscanner https://example.com --only ports --ports 22,80,443,6379,27017
 
 # Skip the noisy modules
 allowscanner https://example.com --no-fuzz --no-subdomains
+
+# Authenticated scan with a bearer token and a custom header
+allowscanner https://app.example.com --bearer "$TOKEN" -H "X-Env: staging"
+
+# Stay in scope, crawl the surface, and emit SARIF for code scanning
+allowscanner https://example.com --scope example.com --exclude '/logout' -f sarif -o results.sarif
+
+# Compare against a previous run and suppress known false positives
+allowscanner https://example.com --baseline last.json --suppress .allowscanignore
 ```
 
 ### Docker
@@ -98,16 +108,30 @@ allowscanner [OPTIONS] URL
 
 Options:
   -o, --output FILE       Save report to file
-  -f, --format FORMAT     Output format: terminal | json | markdown | html
+  -f, --format FORMAT     Output format: terminal | json | markdown | html | sarif
   -c, --concurrency N     Max concurrent requests (default: 50)
   -t, --timeout N         Request timeout in seconds (default: 15)
-  -r, --rate-limit N      Max requests per second (default: unlimited)
   -w, --wordlist FILE     Custom path-fuzzing wordlist (one path per line)
       --ports LIST        Comma-separated TCP ports to scan
   -v, --verbose           Verbose output
       --no-color          Disable colored output
       --no-ssl-verify     Disable TLS certificate verification (use with care)
       --log-file FILE     Write structured logs to a file
+
+Auth & traffic:
+  -H, --header "K: V"      Extra request header (repeatable)
+      --cookie STRING     Cookie header value to send with every request
+      --bearer TOKEN      Shortcut for an Authorization: Bearer header
+  -r, --rate-limit N      Max requests/sec; auto-backs off on HTTP 429
+
+Scope & surface:
+      --scope HOST        Restrict to host(s) (repeatable)
+      --exclude REGEX     Skip URLs matching regex (repeatable)
+      --no-crawl          Skip the crawler / surface mapping
+
+Triage:
+      --suppress FILE     Drop findings matching an .allowscanignore file
+      --baseline FILE     Diff findings against a prior JSON report
 
 Module toggles:
   --no-ssl  --no-dns  --no-headers  --no-vulns  --no-admin  --no-sensitive
@@ -116,7 +140,7 @@ Module toggles:
   --only MODULES          Run only these (comma-separated). Modules:
                           ssl, dns, headers, vulns, tech, subdomains, ports,
                           fuzz, secrets, graphql, methods, takeover, waf,
-                          cors, cookies, admin, sensitive
+                          crawl, cors, cookies, admin, sensitive
 ```
 
 ## 📊 Example output
