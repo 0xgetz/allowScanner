@@ -34,6 +34,10 @@ class ScanConfig:
     check_cors: bool = True
     check_cookies: bool = True
     check_fuzz: bool = True
+    check_secrets: bool = True
+    check_graphql: bool = True
+    check_methods: bool = True
+    check_takeover: bool = True
 
     # Subdomain wordlist size
     subdomain_wordlist_size: int = 500
