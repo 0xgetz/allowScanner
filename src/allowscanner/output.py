@@ -185,6 +185,20 @@ class TerminalOutput:
         )
         self.console.print()
 
+    def print_ports(self, result: ScanResult) -> None:
+        """Print open TCP ports."""
+        if not result.open_ports:
+            return
+
+        self.console.print(
+            Panel(
+                "  ".join(str(p) for p in result.open_ports),
+                title=f"🔌 Open Ports ({len(result.open_ports)})",
+                border_style="magenta",
+            )
+        )
+        self.console.print()
+
     def print_security_headers(self, result: ScanResult) -> None:
         """Print security header status."""
         if not result.security_headers:
@@ -212,4 +226,5 @@ class TerminalOutput:
         self.print_ssl(result)
         self.print_dns(result)
         self.print_subdomains(result)
+        self.print_ports(result)
         self.print_security_headers(result)
