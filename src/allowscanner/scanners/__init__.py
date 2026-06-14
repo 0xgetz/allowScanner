@@ -8,6 +8,7 @@ from .fuzz import FuzzScanner
 from .graphql import GraphQLScanner
 from .headers import HeaderScanner
 from .http import HttpClient
+from .inject import InjectionScanner
 from .methods import HttpMethodScanner
 from .paramfind import ParamFinder
 from .ports import PortScanner
@@ -29,6 +30,7 @@ __all__ = [
     "HeaderScanner",
     "HttpClient",
     "HttpMethodScanner",
+    "InjectionScanner",
     "ParamFinder",
     "PortScanner",
     "SSLScanner",
