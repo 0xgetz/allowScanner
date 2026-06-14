@@ -4,62 +4,79 @@
 
 # AllowScanner
 
-### Advanced Web Vulnerability Scanner
+### Fast, async web security scanner for pentesters and bug bounty hunters
 
 [![CI](https://github.com/0xgetz/allowScanner/actions/workflows/ci.yml/badge.svg)](https://github.com/0xgetz/allowScanner/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/allowscanner?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/allowscanner/)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](Dockerfile)
+[![Checked with mypy](https://img.shields.io/badge/mypy-strict-blue?style=flat-square)](https://mypy-lang.org/)
+[![Ruff](https://img.shields.io/badge/lint-ruff-261230?style=flat-square&logo=ruff&logoColor=white)](https://docs.astral.sh/ruff/)
 
-Fast, async web security scanner for vulnerability detection, security header analysis, SSL/TLS auditing, DNS security checks, and more.
+One command, eleven recon and security modules, a single 0–100 score. Async from top to bottom, no GUI, no signup, runs in CI.
 
 </div>
 
 ---
 
-## ✨ Features
+## ✨ What it does
 
-| Module | Description |
+| Module | What it checks |
 |---|---|
-| 🔍 **Vulnerability Scanner** | SQLi, XSS, SSRF, SSTI, Command Injection, XXE, Open Redirect, Directory Traversal |
-| 🛡️ **Security Headers** | CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy |
-| 🔐 **SSL/TLS Audit** | Certificate validation, expiry checks, weak ciphers, protocol version |
-| 🌐 **DNS Security** | DNSSEC, SPF, DMARC, DKIM, CAA records |
-| 🛠️ **Technology Detection** | 30+ frameworks/servers: WordPress, React, Laravel, Nginx, Cloudflare, etc. |
-| 🔎 **Subdomain Enum** | DNS-based subdomain discovery (500+ common prefixes) |
-| 🍪 **Cookie Security** | Secure, HttpOnly, SameSite attribute checks |
-| 🔗 **CORS Analysis** | Wildcard, reflected origin, null origin, credentials misconfiguration |
-| 📂 **Sensitive Files** | `.env`, `.git`, `phpinfo.php`, Spring Actuator, Swagger, etc. |
-| 🔑 **Admin Panels** | Discover exposed admin/login interfaces |
-| 📊 **Security Score** | 0–100 score based on findings |
+| 🔍 **Vulnerability scanner** | SQLi, XSS, SSRF, SSTI, Command Injection, XXE, Open Redirect, Directory Traversal |
+| 📂 **Sensitive files** | `.env`, `.git`, `phpinfo.php`, Spring Actuator, Swagger, backup files, and more |
+| 🔑 **Admin panels** | Discovers exposed admin / login interfaces |
+| 🧭 **Content discovery** | Wordlist path fuzzing with soft-404 calibration; bring your own list with `--wordlist` |
+| 🔌 **Port scan** | Async TCP connect scan of 25+ high-signal service ports (Redis, MongoDB, MySQL, Docker API, RDP, SMB…) |
+| 🛡️ **Security headers** | CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy |
+| 🔐 **SSL/TLS audit** | Certificate validity, expiry, protocol version, cipher, SANs |
+| 🌐 **DNS security** | DNSSEC, SPF, DMARC, DKIM, CAA records |
+| 🛠️ **Technology detection** | 30+ frameworks/servers: WordPress, React, Laravel, Nginx, Cloudflare, … |
+| 🔎 **Subdomain enum** | DNS-based discovery from a curated common-prefix list |
+| 🍪 **Cookie security** | Secure, HttpOnly, SameSite attribute checks |
+| 🔗 **CORS analysis** | Wildcard, reflected origin, null origin, credentials misconfiguration |
+| 📊 **Security score** | Single 0–100 score derived from finding severity |
 
-## 🚀 Quick Start
+Every module runs concurrently and degrades gracefully: one scanner failing never aborts the run.
 
-### Install from source
+## 🚀 Install
 
 ```bash
+# From PyPI (recommended)
+pip install allowscanner
+
+# Isolated CLI install
+pipx install allowscanner
+
+# From source
 git clone https://github.com/0xgetz/allowScanner.git
 cd allowScanner
 pip install -e .
 ```
 
-### Run a scan
+Requires Python 3.10+.
+
+## ⚡ Quick start
 
 ```bash
-# Basic scan
+# Full scan
 allowscanner https://example.com
 
-# JSON output
-allowscanner https://example.com -o report.json -f json
+# JSON report for piping into other tools
+allowscanner https://example.com -f json -o report.json
 
-# High concurrency
-allowscanner https://example.com -c 100
+# Be polite: cap to 10 requests/sec, lower concurrency
+allowscanner https://example.com --rate-limit 10 -c 20
 
-# Only specific modules
-allowscanner https://example.com --only ssl,dns,headers
+# Content discovery with your own wordlist
+allowscanner https://example.com --wordlist paths.txt
 
-# Skip subdomain enumeration
-allowscanner https://example.com --no-subdomains
+# Targeted port scan only
+allowscanner https://example.com --only ports --ports 22,80,443,6379,27017
+
+# Skip the noisy modules
+allowscanner https://example.com --no-fuzz --no-subdomains
 ```
 
 ### Docker
@@ -74,112 +91,113 @@ docker run --rm allowscanner https://example.com
 ```
 allowscanner [OPTIONS] URL
 
-Positional:
-  url                     Target URL to scan
-
 Options:
   -o, --output FILE       Save report to file
   -f, --format FORMAT     Output format: terminal | json | markdown
   -c, --concurrency N     Max concurrent requests (default: 50)
   -t, --timeout N         Request timeout in seconds (default: 15)
+  -r, --rate-limit N      Max requests per second (default: unlimited)
+  -w, --wordlist FILE     Custom path-fuzzing wordlist (one path per line)
+      --ports LIST        Comma-separated TCP ports to scan
   -v, --verbose           Verbose output
-  --no-color              Disable colored output
+      --no-color          Disable colored output
+      --no-ssl-verify     Disable TLS certificate verification (use with care)
+      --log-file FILE     Write structured logs to a file
 
 Module toggles:
-  --no-ssl                Skip SSL/TLS checks
-  --no-dns                Skip DNS security checks
-  --no-headers            Skip security header checks
-  --no-vulns              Skip vulnerability scans
-  --no-admin              Skip admin panel discovery
-  --no-sensitive          Skip sensitive file checks
-  --no-tech               Skip technology detection
-  --no-subdomains         Skip subdomain enumeration
-  --no-cors               Skip CORS checks
-  --no-cookies            Skip cookie security checks
-  --only MODULES          Only run specific modules (comma-separated)
-                          Modules: ssl,dns,headers,vulns,tech,subdomains,cors,cookies,admin,sensitive
+  --no-ssl  --no-dns  --no-headers  --no-vulns  --no-admin  --no-sensitive
+  --no-tech  --no-subdomains  --no-ports  --no-fuzz  --no-cors  --no-cookies
+  --only MODULES          Run only these (comma-separated). Modules:
+                          ssl, dns, headers, vulns, tech, subdomains,
+                          ports, fuzz, cors, cookies, admin, sensitive
 ```
 
-## 📊 Example Output
+## 📊 Example output
 
 ```
 ╭──── 📊 Scan Summary ─────────────────────────────────╮
 │  Target: https://example.com                          │
 │  Domain: example.com                                  │
 │  Duration: 4.2s                                       │
-│  Score: 72/100                                        │
+│  Score: 68/100                                        │
 ╰──────────────────────────────────────────────────────╯
 
 ╭──── ⚠️ Vulnerability Summary ────────────────────────╮
-│  Critical: 1  High: 2  Medium: 4  Low: 3             │
+│  Critical: 1  High: 2  Medium: 5  Low: 3             │
+╰──────────────────────────────────────────────────────╯
+
+╭──── 🔌 Open Ports (3) ───────────────────────────────╮
+│  22  443  6379                                        │
 ╰──────────────────────────────────────────────────────╯
 
 ┌─── 🔍 Detailed Findings ─────────────────────────────┐
-│ #  │ Severity │ Finding              │ CWE    │      │
-│────┼──────────┼──────────────────────┼────────│      │
-│ 1  │ CRITICAL │ SQL Injection        │ CWE-89 │      │
-│ 2  │ HIGH     │ Reflected XSS        │ CWE-79 │      │
-│ 3  │ HIGH     │ Weak SSL Cipher      │ CWE-326│      │
-│ ...│          │                      │        │      │
+│ # │ Severity │ Finding                      │ CWE     │
+│───┼──────────┼──────────────────────────────┼─────────│
+│ 1 │ CRITICAL │ Open Port 6379 (Redis)       │ CWE-668 │
+│ 2 │ HIGH     │ Reflected XSS                │ CWE-79  │
+│ 3 │ MEDIUM   │ DMARC Record Missing         │ CWE-940 │
+│ … │          │                              │         │
 └──────────────────────────────────────────────────────┘
 ```
 
-## 🏗️ Project Structure
+JSON output (`-f json`) includes every finding, the certificate, DNS records,
+open ports, discovered subdomains, and the computed score, ready to pipe into
+`jq` or a triage pipeline.
+
+## 🧰 Tuning for real targets
+
+- **Rate limiting** (`--rate-limit`): paces all HTTP requests to N/sec so you stay under WAF thresholds and don't hammer production.
+- **Concurrency** (`-c`): how many requests run in parallel. Lower it on fragile targets, raise it for speed on robust ones.
+- **Content discovery** (`--wordlist`): point it at any path wordlist (e.g. SecLists). The fuzzer calibrates against a random baseline first, so soft-404 catch-all pages don't flood the report.
+- **Port scan** (`--ports`): override the default service-port set with your own comma-separated list.
+
+## 🏗️ Project structure
 
 ```
-allowScanner/
-├── src/allowscanner/
-│   ├── __init__.py          # Package exports
-│   ├── cli.py               # CLI entry point
-│   ├── scanner.py           # Main orchestrator
-│   ├── output.py            # Rich terminal formatter
-│   ├── core/
-│   │   ├── models.py        # Data models (Vulnerability, ScanResult, etc.)
-│   │   └── config.py        # Scan configuration
-│   ├── scanners/
-│   │   ├── http.py          # Async HTTP client
-│   │   ├── vuln.py          # Vulnerability scanner
-│   │   ├── ssl.py           # SSL/TLS auditor
-│   │   ├── dns.py           # DNS security checker
-│   │   ├── headers.py       # Security header analyzer
-│   │   ├── tech.py          # Technology detector
-│   │   ├── subdomain.py     # Subdomain enumerator
-│   │   ├── cors.py          # CORS analyzer
-│   │   └── cookies.py       # Cookie security checker
-│   └── formatters/
-│       └── __init__.py      # JSON formatter
-├── tests/
-│   └── test_models.py
-├── pyproject.toml           # Project config
-├── Dockerfile               # Container support
-├── LICENSE                  # MIT License
-└── README.md
+src/allowscanner/
+├── cli.py               # CLI entry point + argument handling
+├── scanner.py           # Async orchestrator (gathers all modules)
+├── output.py            # Rich terminal report
+├── core/
+│   ├── models.py        # Vulnerability, ScanResult, Severity, …
+│   ├── config.py        # Validated scan configuration
+│   ├── exceptions.py    # Exception hierarchy
+│   └── logging.py       # Structured logging + correlation IDs
+├── scanners/
+│   ├── http.py          # Async HTTP client + rate limiter
+│   ├── vuln.py          # Injection / file / admin checks
+│   ├── ssl.py           # TLS auditor
+│   ├── dns.py           # DNS security checks
+│   ├── headers.py       # Security header analysis
+│   ├── tech.py          # Technology fingerprinting
+│   ├── subdomain.py     # Subdomain enumeration
+│   ├── ports.py         # TCP port scanner
+│   ├── fuzz.py          # Content discovery / path fuzzing
+│   ├── cors.py          # CORS misconfiguration checks
+│   └── cookies.py       # Cookie attribute checks
+└── formatters/          # JSON output
 ```
 
-## 🛡️ Security Checks
+## 🧪 Development
 
-### Vulnerability Detection
-- **SQL Injection** — Error-based detection with multiple payloads
-- **Cross-Site Scripting (XSS)** — Reflected XSS with DOM-based payloads
-- **Server-Side Template Injection** — Jinja2, Twig, ERB, Freemarker
-- **SSRF** — Internal metadata endpoints (AWS, GCP, Azure)
-- **Command Injection** — OS command injection via shell metacharacters
-- **XXE** — XML External Entity injection
-- **Directory Traversal** — Path traversal with encoding bypass
-- **Open Redirect** — Unvalidated redirect detection
-- **Log4Shell** — CVE-2021-44228 detection
+```bash
+pip install -e ".[dev]"
+ruff check src/ && ruff format --check src/
+mypy src/allowscanner
+pytest --cov=allowscanner
+```
 
-### Infrastructure Security
-- SSL/TLS certificate health and expiry
-- Weak cipher suites and deprecated protocols
-- DNSSEC, SPF, DMARC, DKIM, CAA records
-- CORS misconfigurations
-- Cookie security attributes
-- Subdomain enumeration
+CI runs lint (Ruff), strict type-checking (mypy), the full test suite across
+Python 3.10–3.13, and a Docker build on every push.
 
-## ⚠️ Disclaimer
+## ⚠️ Responsible use
 
-> **This tool is for authorized security testing only.** Only scan targets you own or have explicit permission to test. Unauthorized scanning may violate laws and regulations. Always practice responsible disclosure.
+> **AllowScanner is for authorized security testing only.**
+>
+> - Scan only systems you own or have **explicit written permission** to test (a signed engagement, an in-scope bug bounty program, or your own infrastructure).
+> - Active checks (injection payloads, port scans, content discovery) generate real traffic and can trip alerts or rate limits. Use `--rate-limit` and stay within program scope.
+> - Unauthorized scanning may violate laws such as the CFAA, the UK Computer Misuse Act, and equivalents elsewhere. You are responsible for how you use this tool.
+> - Practice responsible disclosure for anything you find.
 
 ## 📝 License
 
