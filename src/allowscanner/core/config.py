@@ -39,11 +39,19 @@ class ScanConfig:
     check_methods: bool = True
     check_takeover: bool = True
     check_waf: bool = True
+    check_crawl: bool = True
 
     # Subdomain wordlist size
     subdomain_wordlist_size: int = 500
     fuzz_wordlist: list[str] | None = None
     port_list: list[int] | None = None
+    extra_headers: dict[str, str] = field(default_factory=dict)
+    scope_hosts: list[str] = field(default_factory=list)
+    exclude_patterns: list[str] = field(default_factory=list)
+    crawl_max_pages: int = 100
+    crawl_max_depth: int = 2
+    suppress_file: str | None = None
+    baseline_file: str | None = None
 
     # Port scan range
     port_range: tuple[int, int] = field(default_factory=lambda: (1, 1024))
@@ -152,7 +160,7 @@ class ScanConfig:
             )
 
         # Validate output format
-        valid_formats = {"terminal", "json", "html", "markdown"}
+        valid_formats = {"terminal", "json", "html", "markdown", "sarif"}
         if self.output_format not in valid_formats:
             raise ConfigurationError(
                 f"Invalid output format: {self.output_format}",
