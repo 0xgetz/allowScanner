@@ -23,6 +23,7 @@ from .scanners import (
     GraphQLScanner,
     HeaderScanner,
     HttpMethodScanner,
+    InjectionScanner,
     ParamFinder,
     PortScanner,
     SecretScanner,
@@ -50,6 +51,7 @@ class AllowScanner:
             target_url=self.target_url,
             base_domain=self.base_domain,
         )
+        self.discovered_params: list[str] = []
         logger.info(f"Scanner initialized for target: {self.target_url}")
 
     def _validate_url(self, url: str) -> str:
@@ -139,6 +141,8 @@ class AllowScanner:
 
             if self.config.check_crawl:
                 await self._run_crawl(http)
+            if self.config.check_paramfind:
+                await self._run_paramfind(http)
 
             if self.config.check_technologies:
                 tasks.append(self._run_tech(http))
@@ -160,8 +164,6 @@ class AllowScanner:
                 tasks.append(self._run_ports())
             if self.config.check_fuzz:
                 tasks.append(self._run_fuzz(http))
-            if self.config.check_paramfind:
-                tasks.append(self._run_paramfind(http))
             if self.config.check_secrets:
                 tasks.append(self._run_secrets(http))
             if self.config.check_graphql:
@@ -170,6 +172,8 @@ class AllowScanner:
                 tasks.append(self._run_methods(http))
             if self.config.check_waf:
                 tasks.append(self._run_waf(http))
+            if self.config.check_inject:
+                tasks.append(self._run_inject(http))
 
             # Run all tasks with error recovery
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -421,9 +425,22 @@ class AllowScanner:
         """Discover hidden query parameters on the target."""
         try:
             finder = ParamFinder(wordlist=self.config.param_wordlist)
-            _found, vulns = await finder.scan(self.target_url, http)
+            found, vulns = await finder.scan(self.target_url, http)
+            self.discovered_params = found
             self.result.vulnerabilities.extend(vulns)
             logger.debug(f"Param discovery completed: {len(vulns)} findings")
         except Exception as e:
             logger.error(f"Param finder failed: {e}")
+            raise
+
+    async def _run_inject(self, http: HttpClient) -> None:
+        """Verify XSS and blind SQLi on discovered (or default) parameters."""
+        try:
+            params = self.discovered_params or None
+            scanner = InjectionScanner(params=params, concurrency=self.config.concurrency)
+            vulns = await scanner.scan(self.target_url, http)
+            self.result.vulnerabilities.extend(vulns)
+            logger.debug(f"Injection verification completed: {len(vulns)} findings")
+        except Exception as e:
+            logger.error(f"Injection scanner failed: {e}")
             raise
