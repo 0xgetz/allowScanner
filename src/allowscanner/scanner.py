@@ -12,9 +12,12 @@ from .core.config import ScanConfig
 from .core.exceptions import AllowScannerError, ValidationError
 from .core.logging import get_logger, log_scan_session
 from .core.models import ScanResult, Vulnerability
+from .core.scope import Scope
+from .core.suppress import apply_suppressions, load_suppressions
 from .scanners import (
     CookieScanner,
     CORSScanner,
+    Crawler,
     DNSScanner,
     FuzzScanner,
     GraphQLScanner,
@@ -133,6 +136,9 @@ class AllowScanner:
         try:
             tasks: list[Any] = []
 
+            if self.config.check_crawl:
+                await self._run_crawl(http)
+
             if self.config.check_technologies:
                 tasks.append(self._run_tech(http))
             if self.config.check_headers:
@@ -174,6 +180,14 @@ class AllowScanner:
 
             if self.config.check_takeover:
                 await self._run_takeover(http)
+
+            patterns = load_suppressions(self.config.suppress_file)
+            if patterns:
+                before = len(self.result.vulnerabilities)
+                self.result.vulnerabilities = apply_suppressions(self.result.vulnerabilities, patterns)
+                suppressed = before - len(self.result.vulnerabilities)
+                if suppressed:
+                    logger.info(f"Suppressed {suppressed} finding(s) via suppression rules")
 
         except Exception as e:
             logger.error(f"Critical error during scan: {e}")
@@ -379,3 +393,23 @@ class AllowScanner:
         except Exception as e:
             logger.error(f"WAF scanner failed: {e}")
             raise
+
+    async def _run_crawl(self, http: HttpClient) -> None:
+        """Crawl the in-scope surface and record discovered URLs."""
+        try:
+            scope = Scope(
+                hosts=self.config.scope_hosts or [self.base_domain],
+                exclude_patterns=self.config.exclude_patterns,
+            )
+            crawler = Crawler(
+                scope,
+                max_pages=self.config.crawl_max_pages,
+                max_depth=self.config.crawl_max_depth,
+                concurrency=self.config.concurrency,
+            )
+            discovered, vulns = await crawler.scan(self.target_url, http)
+            self.result.discovered_urls = discovered
+            self.result.vulnerabilities.extend(vulns)
+            logger.debug(f"Crawl completed: {len(discovered)} URLs discovered")
+        except Exception as e:
+            logger.error(f"Crawler failed: {e}")
