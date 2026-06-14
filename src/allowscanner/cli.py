@@ -61,6 +61,11 @@ Examples:
         "--no-ssl-verify", action="store_true", help="Disable SSL certificate verification (use with caution)"
     )
     parser.add_argument("--log-file", help="Path to log file for structured logging")
+    parser.add_argument(
+        "-r", "--rate-limit", type=int, default=None, help="Max requests per second (default: unlimited)"
+    )
+    parser.add_argument("--ports", help="Comma-separated TCP ports to scan (default: common service ports)")
+    parser.add_argument("-w", "--wordlist", help="Path to a custom path-fuzzing wordlist (one path per line)")
 
     # Module toggles
     scan = parser.add_argument_group("scan modules")
@@ -74,6 +79,8 @@ Examples:
     scan.add_argument("--no-subdomains", action="store_true", help="Skip subdomain enumeration")
     scan.add_argument("--no-cors", action="store_true", help="Skip CORS checks")
     scan.add_argument("--no-cookies", action="store_true", help="Skip cookie security checks")
+    scan.add_argument("--no-ports", action="store_true", help="Skip TCP port scan")
+    scan.add_argument("--no-fuzz", action="store_true", help="Skip content discovery / path fuzzing")
     scan.add_argument("--only", help="Only run specific modules (comma-separated)")
 
     return parser.parse_args(argv)
@@ -145,7 +152,26 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             output_format=args.format,
             output_file=args.output,
             verify_ssl=not args.no_ssl_verify,
+            rate_limit=args.rate_limit,
         )
+
+        if args.ports:
+            try:
+                config.port_list = [int(p) for p in args.ports.split(",") if p.strip()]
+            except ValueError as e:
+                raise ConfigurationError(
+                    "Invalid --ports value",
+                    config_key="ports",
+                    suggestion="Use comma-separated integers, e.g. 22,80,443",
+                ) from e
+        if args.wordlist:
+            try:
+                with open(args.wordlist, encoding="utf-8") as fh:
+                    config.fuzz_wordlist = [ln.strip() for ln in fh if ln.strip() and not ln.lstrip().startswith("#")]
+            except OSError as e:
+                raise ConfigurationError(
+                    f"Could not read wordlist: {args.wordlist}", config_key="wordlist", suggestion="Check the file path"
+                ) from e
 
         if args.only:
             modules = set(args.only.split(","))
@@ -159,6 +185,8 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_subdomains = "subdomains" in modules
             config.check_cors = "cors" in modules
             config.check_cookies = "cookies" in modules
+            config.check_ports = "ports" in modules
+            config.check_fuzz = "fuzz" in modules
         else:
             config.check_ssl = not args.no_ssl
             config.check_dns = not args.no_dns
@@ -170,6 +198,8 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
             config.check_subdomains = not args.no_subdomains
             config.check_cors = not args.no_cors
             config.check_cookies = not args.no_cookies
+            config.check_ports = not args.no_ports
+            config.check_fuzz = not args.no_fuzz
 
         return config
 
@@ -209,7 +239,7 @@ async def async_main(args: argparse.Namespace) -> int:
 
         console.print(f"  [dim]Target:[/] [cyan]{target}[/]")
         console.print(
-            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
+            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'ports', 'fuzz', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
         )
         console.print()
 
