@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import dns.asyncresolver
 import dns.exception
 import dns.name
@@ -17,15 +19,15 @@ logger = get_logger()
 class DNSScanner:
     """Check DNS security configuration (DNSSEC, SPF, DMARC, DKIM)."""
 
-    async def scan(self, domain: str) -> tuple[dict, list[Vulnerability]]:
+    async def scan(self, domain: str) -> tuple[dict[str, Any], list[Vulnerability]]:
         """Scan domain for DNS security configuration.
-        
+
         Args:
             domain: Domain name to scan
-            
+
         Returns:
             Tuple of (DNS records dict, list of vulnerabilities)
-            
+
         Raises:
             DNSError: If DNS operations fail critically
             ValidationError: If domain is invalid
@@ -33,9 +35,7 @@ class DNSScanner:
         # Validate domain
         if not domain or not isinstance(domain, str):
             raise DNSError(
-                "Invalid domain name",
-                domain=domain,
-                suggestion="Provide a valid domain name (e.g., example.com)"
+                "Invalid domain name", domain=domain, suggestion="Provide a valid domain name (e.g., example.com)"
             )
 
         vulns: list[Vulnerability] = []
@@ -62,11 +62,11 @@ class DNSScanner:
                 logger.warning(f"DNS query timeout for DNSSEC check on {domain}")
                 raise TimeoutError(
                     "DNS query timed out during DNSSEC check",
-                    domain=domain,
-                    record_type="DNSKEY",
-                    timeout_seconds=resolver.lifetime,
-                    suggestion="Try again or increase timeout"
-                )
+                    operation="DNSSEC check",
+                    timeout_duration=resolver.lifetime,
+                    context={"domain": domain, "record_type": "DNSKEY"},
+                    suggestion="Try again or increase timeout",
+                ) from None
             except dns.exception.DNSException as e:
                 records["dnssec"] = False
                 logger.warning(f"DNSSEC check failed for {domain}: {e}")
@@ -75,14 +75,16 @@ class DNSScanner:
             logger.error(f"Unexpected error during DNSSEC check for {domain}: {e}")
 
         if not records.get("dnssec"):
-            vulns.append(Vulnerability(
-                name="DNSSEC Not Enabled",
-                severity=Severity.MEDIUM,
-                url=domain,
-                description="Domain does not use DNSSEC, vulnerable to DNS spoofing",
-                recommendation="Enable DNSSEC at your domain registrar",
-                cwe="CWE-350",
-            ))
+            vulns.append(
+                Vulnerability(
+                    name="DNSSEC Not Enabled",
+                    severity=Severity.MEDIUM,
+                    url=domain,
+                    description="Domain does not use DNSSEC, vulnerable to DNS spoofing",
+                    recommendation="Enable DNSSEC at your domain registrar",
+                    cwe="CWE-350",
+                )
+            )
 
         # SPF & DMARC checks
         spf_found = False
@@ -104,14 +106,16 @@ class DNSScanner:
 
                         # Check for overly permissive SPF
                         if "+all" in txt:
-                            vulns.append(Vulnerability(
-                                name="Overly Permissive SPF Record",
-                                severity=Severity.MEDIUM,
-                                url=domain,
-                                description="SPF record uses '+all' which allows any server to send email",
-                                recommendation="Change '+all' to '-all' or '~all'",
-                                cwe="CWE-940",
-                            ))
+                            vulns.append(
+                                Vulnerability(
+                                    name="Overly Permissive SPF Record",
+                                    severity=Severity.MEDIUM,
+                                    url=domain,
+                                    description="SPF record uses '+all' which allows any server to send email",
+                                    recommendation="Change '+all' to '-all' or '~all'",
+                                    cwe="CWE-940",
+                                )
+                            )
             except dns.resolver.NoAnswer:
                 logger.debug(f"No TXT records for {domain}")
             except dns.resolver.NXDOMAIN:
@@ -125,14 +129,16 @@ class DNSScanner:
 
         if not spf_found:
             records["spf"] = None
-            vulns.append(Vulnerability(
-                name="SPF Record Missing",
-                severity=Severity.MEDIUM,
-                url=domain,
-                description="No SPF record found, email spoofing possible",
-                recommendation="Add an SPF TXT record to your DNS",
-                cwe="CWE-940",
-            ))
+            vulns.append(
+                Vulnerability(
+                    name="SPF Record Missing",
+                    severity=Severity.MEDIUM,
+                    url=domain,
+                    description="No SPF record found, email spoofing possible",
+                    recommendation="Add an SPF TXT record to your DNS",
+                    cwe="CWE-940",
+                )
+            )
 
         # DMARC check
         try:
@@ -160,14 +166,16 @@ class DNSScanner:
 
         if not dmarc_found:
             records["dmarc"] = None
-            vulns.append(Vulnerability(
-                name="DMARC Record Missing",
-                severity=Severity.MEDIUM,
-                url=domain,
-                description="No DMARC record found, email authentication weak",
-                recommendation="Add a DMARC policy record to _dmarc subdomain",
-                cwe="CWE-940",
-            ))
+            vulns.append(
+                Vulnerability(
+                    name="DMARC Record Missing",
+                    severity=Severity.MEDIUM,
+                    url=domain,
+                    description="No DMARC record found, email authentication weak",
+                    recommendation="Add a DMARC policy record to _dmarc subdomain",
+                    cwe="CWE-940",
+                )
+            )
 
         # DKIM check (common selectors)
         dkim_found = False
@@ -225,13 +233,15 @@ class DNSScanner:
             logger.error(f"Unexpected error during CAA check for {domain}: {e}")
 
         if not records.get("caa"):
-            vulns.append(Vulnerability(
-                name="CAA Record Missing",
-                severity=Severity.LOW,
-                url=domain,
-                description="No CAA record found. Any CA can issue certificates for this domain",
-                recommendation="Add CAA records to restrict which CAs can issue certificates",
-                cwe="CWE-295",
-            ))
+            vulns.append(
+                Vulnerability(
+                    name="CAA Record Missing",
+                    severity=Severity.LOW,
+                    url=domain,
+                    description="No CAA record found. Any CA can issue certificates for this domain",
+                    recommendation="Add CAA records to restrict which CAs can issue certificates",
+                    cwe="CWE-295",
+                )
+            )
 
         return records, vulns

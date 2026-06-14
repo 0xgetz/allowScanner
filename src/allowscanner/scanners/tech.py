@@ -3,10 +3,22 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING, TypedDict
 
 from ..core.models import Technology
 
-TECH_SIGNATURES = {
+if TYPE_CHECKING:
+    from .http import HttpClient
+
+
+class TechSignature(TypedDict, total=False):
+    patterns: list[str]
+    headers: list[str]
+    cookies: list[str]
+    category: str
+
+
+TECH_SIGNATURES: dict[str, TechSignature] = {
     "WordPress": {
         "patterns": ["wp-content", "wp-includes", "wordpress", "wp-emoji"],
         "headers": ["x-pingback"],
@@ -138,7 +150,7 @@ TECH_SIGNATURES = {
 class TechScanner:
     """Detect web technologies, frameworks, and servers."""
 
-    async def scan(self, url: str, session: object) -> list[Technology]:
+    async def scan(self, url: str, session: HttpClient) -> list[Technology]:
         technologies: list[Technology] = []
         seen: set[str] = set()
 
@@ -193,10 +205,12 @@ class TechScanner:
 
             if found:
                 seen.add(tech_name)
-                technologies.append(Technology(
-                    name=tech_name,
-                    category=sig.get("category", ""),
-                ))
+                technologies.append(
+                    Technology(
+                        name=tech_name,
+                        category=sig.get("category", ""),
+                    )
+                )
 
         # Try to detect versions from meta generator tag
         gen_match = re.search(r'<meta[^>]*name="generator"[^>]*content="([^"]+)"', content, re.IGNORECASE)
@@ -205,7 +219,7 @@ class TechScanner:
             for tech in technologies:
                 if tech.name.lower() in gen.lower():
                     # Extract version
-                    ver_match = re.search(r'(\d+\.[\d.]+)', gen)
+                    ver_match = re.search(r"(\d+\.[\d.]+)", gen)
                     if ver_match:
                         tech.version = ver_match.group(1)
 

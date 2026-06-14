@@ -22,10 +22,10 @@ logger = get_logger()
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command line arguments with validation.
-    
+
     Args:
         argv: Optional argument list (for testing)
-        
+
     Returns:
         Parsed arguments namespace
     """
@@ -45,34 +45,22 @@ Examples:
     parser.add_argument("url", help="Target URL to scan (must start with http:// or https://)")
     parser.add_argument("-o", "--output", help="Output file path")
     parser.add_argument(
-        "-f", "--format",
+        "-f",
+        "--format",
         choices=["terminal", "json", "markdown"],
         default="terminal",
-        help="Output format (default: terminal)"
+        help="Output format (default: terminal)",
     )
     parser.add_argument(
-        "-c", "--concurrency",
-        type=int,
-        default=50,
-        help="Max concurrent requests (1-1000, default: 50)"
+        "-c", "--concurrency", type=int, default=50, help="Max concurrent requests (1-1000, default: 50)"
     )
-    parser.add_argument(
-        "-t", "--timeout",
-        type=int,
-        default=15,
-        help="Request timeout in seconds (1-300, default: 15)"
-    )
+    parser.add_argument("-t", "--timeout", type=int, default=15, help="Request timeout in seconds (1-300, default: 15)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--no-color", action="store_true", help="Disable colored output")
     parser.add_argument(
-        "--no-ssl-verify",
-        action="store_true",
-        help="Disable SSL certificate verification (use with caution)"
+        "--no-ssl-verify", action="store_true", help="Disable SSL certificate verification (use with caution)"
     )
-    parser.add_argument(
-        "--log-file",
-        help="Path to log file for structured logging"
-    )
+    parser.add_argument("--log-file", help="Path to log file for structured logging")
 
     # Module toggles
     scan = parser.add_argument_group("scan modules")
@@ -93,21 +81,19 @@ Examples:
 
 def validate_url(url: str) -> str:
     """Validate and sanitize the target URL.
-    
+
     Args:
         url: URL to validate
-        
+
     Returns:
         Validated and sanitized URL
-        
+
     Raises:
         ValidationError: If URL is invalid
     """
     if not url or not isinstance(url, str):
         raise ValidationError(
-            "Target URL cannot be empty",
-            field="url",
-            suggestion="Provide a valid URL as the first argument"
+            "Target URL cannot be empty", field="url", suggestion="Provide a valid URL as the first argument"
         )
 
     # Strip whitespace
@@ -124,7 +110,7 @@ def validate_url(url: str) -> str:
             f"Invalid URL format: {url}",
             field="url",
             value=url,
-            suggestion="URL must have a valid scheme (http/https) and domain"
+            suggestion="URL must have a valid scheme (http/https) and domain",
         )
 
     if parsed.scheme not in ("http", "https"):
@@ -132,7 +118,7 @@ def validate_url(url: str) -> str:
             f"Unsupported URL scheme: {parsed.scheme}",
             field="url",
             value=parsed.scheme,
-            suggestion="Only http:// and https:// schemes are supported"
+            suggestion="Only http:// and https:// schemes are supported",
         )
 
     return url.rstrip("/")
@@ -140,13 +126,13 @@ def validate_url(url: str) -> str:
 
 def build_config(args: argparse.Namespace) -> ScanConfig:
     """Build ScanConfig from parsed arguments with validation.
-    
+
     Args:
         args: Parsed command line arguments
-        
+
     Returns:
         Validated ScanConfig
-        
+
     Raises:
         ConfigurationError: If configuration is invalid
     """
@@ -187,22 +173,16 @@ def build_config(args: argparse.Namespace) -> ScanConfig:
 
         return config
 
-    except ConfigurationError as e:
-        raise ConfigurationError(
-            str(e),
-            config_key=e.config_key,
-            config_value=e.config_value,
-            allowed_values=e.allowed_values,
-            suggestion=f"Invalid configuration: {e.suggestion}"
-        )
+    except ConfigurationError:
+        raise
 
 
 async def async_main(args: argparse.Namespace) -> int:
     """Main async entry point.
-    
+
     Args:
         args: Parsed command line arguments
-        
+
     Returns:
         Exit code
     """
@@ -228,7 +208,9 @@ async def async_main(args: argparse.Namespace) -> int:
         output.print_banner()
 
         console.print(f"  [dim]Target:[/] [cyan]{target}[/]")
-        console.print(f"  [dim]Modules:[/] {', '.join(m for m in ['ssl','dns','headers','vulns','tech','subdomains','cors','cookies'] if getattr(config, f'check_{m}', True))}")
+        console.print(
+            f"  [dim]Modules:[/] {', '.join(m for m in ['ssl', 'dns', 'headers', 'vulns', 'tech', 'subdomains', 'cors', 'cookies'] if getattr(config, f'check_{m}', True))}"
+        )
         console.print()
 
         # Run scanner
@@ -266,24 +248,24 @@ async def async_main(args: argparse.Namespace) -> int:
 
     except ValidationError as e:
         console.print(f"\n[red]❌ Validation Error: {e}[/]")
-        if e.details.get("suggestion"):
-            console.print(f"  [yellow]💡 Suggestion: {e.details['suggestion']}[/]")
+        if e.suggestion:
+            console.print(f"  [yellow]💡 Suggestion: {e.suggestion}[/]")
         if args.verbose:
             console.print_exception()
         return 1
 
     except ConfigurationError as e:
         console.print(f"\n[red]❌ Configuration Error: {e}[/]")
-        if e.details.get("suggestion"):
-            console.print(f"  [yellow]💡 Suggestion: {e.details['suggestion']}[/]")
+        if e.suggestion:
+            console.print(f"  [yellow]💡 Suggestion: {e.suggestion}[/]")
         if args.verbose:
             console.print_exception()
         return 1
 
     except AllowScannerError as e:
         console.print(f"\n[red]❌ Scanner Error: {e}[/]")
-        if e.details.get("suggestion"):
-            console.print(f"  [yellow]💡 Suggestion: {e.details['suggestion']}[/]")
+        if e.suggestion:
+            console.print(f"  [yellow]💡 Suggestion: {e.suggestion}[/]")
         if args.verbose:
             console.print_exception()
         return 1

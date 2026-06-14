@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..core.models import Severity, Vulnerability
+
+if TYPE_CHECKING:
+    from .http import HttpClient
 
 
 class CORSScanner:
     """Check for CORS misconfigurations."""
 
-    async def scan(self, url: str, session: object) -> list[Vulnerability]:
+    async def scan(self, url: str, session: HttpClient) -> list[Vulnerability]:
         vulns: list[Vulnerability] = []
 
         # Test with various Origin headers
@@ -33,60 +38,70 @@ class CORSScanner:
 
             # Wildcard with credentials = critical
             if acao == "*" and acac == "true":
-                vulns.append(Vulnerability(
-                    name="CORS Misconfiguration: Wildcard + Credentials",
-                    severity=Severity.CRITICAL,
-                    url=url,
-                    description="Access-Control-Allow-Origin: * with Allow-Credentials: true",
-                    payload=f"Origin: {origin}",
-                    recommendation="Never use wildcard origin with credentials. Validate origins strictly.",
-                    cwe="CWE-942",
-                ))
+                vulns.append(
+                    Vulnerability(
+                        name="CORS Misconfiguration: Wildcard + Credentials",
+                        severity=Severity.CRITICAL,
+                        url=url,
+                        description="Access-Control-Allow-Origin: * with Allow-Credentials: true",
+                        payload=f"Origin: {origin}",
+                        recommendation="Never use wildcard origin with credentials. Validate origins strictly.",
+                        cwe="CWE-942",
+                    )
+                )
                 return vulns
 
             # Reflected origin (attacker origin accepted)
             if acao == origin and origin not in (url.rstrip("/"),):
                 if acac == "true":
-                    vulns.append(Vulnerability(
-                        name="CORS Misconfiguration: Reflected Origin with Credentials",
-                        severity=Severity.HIGH,
-                        url=url,
-                        description="Server reflects attacker origin and allows credentials",
-                        payload=f"Origin: {origin} → ACAO: {acao}",
-                        recommendation="Validate origins against a strict allowlist",
-                        cwe="CWE-942",
-                    ))
+                    vulns.append(
+                        Vulnerability(
+                            name="CORS Misconfiguration: Reflected Origin with Credentials",
+                            severity=Severity.HIGH,
+                            url=url,
+                            description="Server reflects attacker origin and allows credentials",
+                            payload=f"Origin: {origin} → ACAO: {acao}",
+                            recommendation="Validate origins against a strict allowlist",
+                            cwe="CWE-942",
+                        )
+                    )
                 else:
-                    vulns.append(Vulnerability(
-                        name="CORS: Reflected Origin",
-                        severity=Severity.LOW,
-                        url=url,
-                        description=f"Server reflects arbitrary origin: {origin}",
-                        payload=f"Origin: {origin} → ACAO: {acao}",
-                        recommendation="Validate origins against a strict allowlist",
-                        cwe="CWE-942",
-                    ))
+                    vulns.append(
+                        Vulnerability(
+                            name="CORS: Reflected Origin",
+                            severity=Severity.LOW,
+                            url=url,
+                            description=f"Server reflects arbitrary origin: {origin}",
+                            payload=f"Origin: {origin} → ACAO: {acao}",
+                            recommendation="Validate origins against a strict allowlist",
+                            cwe="CWE-942",
+                        )
+                    )
 
             # Null origin
             if acao == "null":
-                vulns.append(Vulnerability(
-                    name="CORS Misconfiguration: Null Origin Allowed",
-                    severity=Severity.MEDIUM,
-                    url=url,
-                    description="Server allows 'null' origin, exploitable via sandboxed iframes",
-                    recommendation="Do not allow null origin",
-                    cwe="CWE-942",
-                ))
+                vulns.append(
+                    Vulnerability(
+                        name="CORS Misconfiguration: Null Origin Allowed",
+                        severity=Severity.MEDIUM,
+                        url=url,
+                        description="Server allows 'null' origin, exploitable via sandboxed iframes",
+                        recommendation="Do not allow null origin",
+                        cwe="CWE-942",
+                    )
+                )
 
             # Wildcard without credentials (informational)
             if acao == "*" and acac != "true":
-                vulns.append(Vulnerability(
-                    name="CORS: Public API (Wildcard)",
-                    severity=Severity.INFO,
-                    url=url,
-                    description="API allows all origins (no credentials) — may be intentional for public APIs",
-                    recommendation="Verify this is intentional for a public API",
-                ))
+                vulns.append(
+                    Vulnerability(
+                        name="CORS: Public API (Wildcard)",
+                        severity=Severity.INFO,
+                        url=url,
+                        description="API allows all origins (no credentials) — may be intentional for public APIs",
+                        recommendation="Verify this is intentional for a public API",
+                    )
+                )
 
         # Deduplicate
         seen = set()

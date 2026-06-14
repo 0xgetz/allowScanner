@@ -79,14 +79,16 @@ class TerminalOutput:
         vulns = sorted(result.vulnerabilities, key=lambda v: v.severity)
 
         if not vulns:
-            self.console.print(Panel(
-                "[bold green]✅ No vulnerabilities found![/]",
-                border_style="green",
-            ))
+            self.console.print(
+                Panel(
+                    "[bold green]✅ No vulnerabilities found![/]",
+                    border_style="green",
+                )
+            )
             return
 
         # Severity counts
-        counts: dict[str, int] = {}
+        counts: dict[Severity, int] = {}
         for v in vulns:
             counts[v.severity] = counts.get(v.severity, 0) + 1
 
@@ -161,9 +163,9 @@ class TerminalOutput:
 
         dns = result.dns_records
         table.add_row("DNSSEC", "✅ Enabled" if dns.get("dnssec") else "❌ Disabled", "")
-        table.add_row("SPF", "✅ Found" if dns.get("spf") else "❌ Missing", dns.get("spf", "")[:60])
-        table.add_row("DMARC", "✅ Found" if dns.get("dmarc") else "❌ Missing", dns.get("dmarc", "")[:60])
-        table.add_row("DKIM", "✅ Found" if dns.get("dkim") else "⚠️ Not detected", dns.get("dkim", ""))
+        table.add_row("SPF", "✅ Found" if dns.get("spf") else "❌ Missing", (dns.get("spf") or "")[:60])
+        table.add_row("DMARC", "✅ Found" if dns.get("dmarc") else "❌ Missing", (dns.get("dmarc") or "")[:60])
+        table.add_row("DKIM", "✅ Found" if dns.get("dkim") else "⚠️ Not detected", dns.get("dkim") or "")
         table.add_row("CAA", "✅ Found" if dns.get("caa") else "⚠️ Missing", "")
 
         self.console.print(table)
@@ -174,11 +176,13 @@ class TerminalOutput:
         if not result.subdomains:
             return
 
-        self.console.print(Panel(
-            "\n".join(f"  • {s}" for s in result.subdomains[:30]),
-            title=f"🔎 Subdomains Found ({len(result.subdomains)})",
-            border_style="cyan",
-        ))
+        self.console.print(
+            Panel(
+                "\n".join(f"  • {s}" for s in result.subdomains[:30]),
+                title=f"🔎 Subdomains Found ({len(result.subdomains)})",
+                border_style="cyan",
+            )
+        )
         self.console.print()
 
     def print_security_headers(self, result: ScanResult) -> None:

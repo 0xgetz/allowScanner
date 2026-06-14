@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from ..core.models import Severity, Vulnerability
+
+if TYPE_CHECKING:
+    from .http import HttpClient
 
 
 class CookieScanner:
     """Check cookie security attributes."""
 
-    async def scan(self, url: str, session: object) -> list[Vulnerability]:
+    async def scan(self, url: str, session: HttpClient) -> list[Vulnerability]:
         vulns: list[Vulnerability] = []
 
         resp, _ = await session.get(url)
@@ -19,7 +24,7 @@ class CookieScanner:
         cookies = resp.cookies
         if not cookies:
             # Also check raw headers
-            raw_cookies = resp.headers.getall("Set-Cookie", []) if hasattr(resp.headers, 'getall') else []
+            raw_cookies = resp.headers.getall("Set-Cookie", []) if hasattr(resp.headers, "getall") else []
             if not raw_cookies:
                 return vulns
             for raw in raw_cookies:
@@ -30,29 +35,33 @@ class CookieScanner:
 
         return vulns
 
-    def _check_cookie(self, cookie, url: str) -> list[Vulnerability]:
+    def _check_cookie(self, cookie: Any, url: str) -> list[Vulnerability]:
         vulns = []
         name = cookie.key
 
         if not cookie.get("secure"):
-            vulns.append(Vulnerability(
-                name=f"Insecure Cookie: {name}",
-                severity=Severity.MEDIUM,
-                url=url,
-                description=f"Cookie '{name}' missing Secure flag — can be sent over HTTP",
-                recommendation="Set the Secure flag on all cookies",
-                cwe="CWE-614",
-            ))
+            vulns.append(
+                Vulnerability(
+                    name=f"Insecure Cookie: {name}",
+                    severity=Severity.MEDIUM,
+                    url=url,
+                    description=f"Cookie '{name}' missing Secure flag — can be sent over HTTP",
+                    recommendation="Set the Secure flag on all cookies",
+                    cwe="CWE-614",
+                )
+            )
 
         if not cookie.get("httponly"):
-            vulns.append(Vulnerability(
-                name=f"Cookie Missing HttpOnly: {name}",
-                severity=Severity.MEDIUM,
-                url=url,
-                description=f"Cookie '{name}' missing HttpOnly flag — accessible via JavaScript",
-                recommendation="Set the HttpOnly flag on session cookies",
-                cwe="CWE-1004",
-            ))
+            vulns.append(
+                Vulnerability(
+                    name=f"Cookie Missing HttpOnly: {name}",
+                    severity=Severity.MEDIUM,
+                    url=url,
+                    description=f"Cookie '{name}' missing HttpOnly flag — accessible via JavaScript",
+                    recommendation="Set the HttpOnly flag on session cookies",
+                    cwe="CWE-1004",
+                )
+            )
 
         return vulns
 
@@ -77,35 +86,41 @@ class CookieScanner:
             return None
 
         if not has_attribute("secure"):
-            vulns.append(Vulnerability(
-                name=f"Insecure Cookie: {cookie_name}",
-                severity=Severity.MEDIUM,
-                url=url,
-                description=f"Cookie '{cookie_name}' missing Secure flag",
-                recommendation="Set the Secure flag on all cookies",
-                cwe="CWE-614",
-            ))
+            vulns.append(
+                Vulnerability(
+                    name=f"Insecure Cookie: {cookie_name}",
+                    severity=Severity.MEDIUM,
+                    url=url,
+                    description=f"Cookie '{cookie_name}' missing Secure flag",
+                    recommendation="Set the Secure flag on all cookies",
+                    cwe="CWE-614",
+                )
+            )
 
         if not has_attribute("httponly"):
-            vulns.append(Vulnerability(
-                name=f"Cookie Missing HttpOnly: {cookie_name}",
-                severity=Severity.MEDIUM,
-                url=url,
-                description=f"Cookie '{cookie_name}' missing HttpOnly flag",
-                recommendation="Set the HttpOnly flag on session cookies",
-                cwe="CWE-1004",
-            ))
+            vulns.append(
+                Vulnerability(
+                    name=f"Cookie Missing HttpOnly: {cookie_name}",
+                    severity=Severity.MEDIUM,
+                    url=url,
+                    description=f"Cookie '{cookie_name}' missing HttpOnly flag",
+                    recommendation="Set the HttpOnly flag on session cookies",
+                    cwe="CWE-1004",
+                )
+            )
 
         # Check for SameSite attribute (with or without value)
         samesite_value = get_attribute_value("samesite")
         if samesite_value is None:
-            vulns.append(Vulnerability(
-                name=f"Cookie Missing SameSite: {cookie_name}",
-                severity=Severity.LOW,
-                url=url,
-                description=f"Cookie '{cookie_name}' missing SameSite attribute",
-                recommendation="Set SameSite=Lax or SameSite=Strict on cookies",
-                cwe="CWE-1275",
-            ))
+            vulns.append(
+                Vulnerability(
+                    name=f"Cookie Missing SameSite: {cookie_name}",
+                    severity=Severity.LOW,
+                    url=url,
+                    description=f"Cookie '{cookie_name}' missing SameSite attribute",
+                    recommendation="Set SameSite=Lax or SameSite=Strict on cookies",
+                    cwe="CWE-1275",
+                )
+            )
 
         return vulns

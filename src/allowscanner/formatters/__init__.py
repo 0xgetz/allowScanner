@@ -21,9 +21,9 @@ def to_json(result: ScanResult, indent: int = 2) -> str:
     """Convert ScanResult to JSON string."""
     data = asdict(result)
     # Convert datetime
-    if data.get("scan_start"):
+    if result.scan_start is not None:
         data["scan_start"] = result.scan_start.isoformat()
-    if data.get("scan_end"):
+    if result.scan_end is not None:
         data["scan_end"] = result.scan_end.isoformat()
     data["score"] = result.score
     return json.dumps(data, cls=_Encoder, indent=indent, ensure_ascii=False)

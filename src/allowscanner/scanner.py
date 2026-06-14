@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import time
 from datetime import datetime
+from typing import Any
 from urllib.parse import urlparse
 
 from .core.config import ScanConfig
 from .core.exceptions import AllowScannerError, ValidationError
 from .core.logging import get_logger, log_scan_session
-from .core.models import ScanResult
+from .core.models import ScanResult, Vulnerability
 from .scanners import (
     CookieScanner,
     CORSScanner,
@@ -42,13 +43,13 @@ class AllowScanner:
 
     def _validate_url(self, url: str) -> str:
         """Validate and sanitize the target URL.
-        
+
         Args:
             url: Target URL to validate
-            
+
         Returns:
             Sanitized URL
-            
+
         Raises:
             ValidationError: If URL is invalid
         """
@@ -56,7 +57,7 @@ class AllowScanner:
             raise ValidationError(
                 "Target URL cannot be empty",
                 field="url",
-                suggestion="Provide a valid URL starting with http:// or https://"
+                suggestion="Provide a valid URL starting with http:// or https://",
             )
 
         # Strip trailing slashes and whitespace
@@ -73,7 +74,7 @@ class AllowScanner:
                 f"Invalid URL format: {url}",
                 field="url",
                 value=url,
-                suggestion="URL must have a valid scheme (http/https) and domain"
+                suggestion="URL must have a valid scheme (http/https) and domain",
             )
 
         if parsed.scheme not in ("http", "https"):
@@ -81,17 +82,17 @@ class AllowScanner:
                 f"Unsupported URL scheme: {parsed.scheme}",
                 field="url",
                 value=parsed.scheme,
-                suggestion="Only http:// and https:// schemes are supported"
+                suggestion="Only http:// and https:// schemes are supported",
             )
 
         return url
 
     def _extract_domain(self, url: str) -> str:
         """Extract the base domain from URL.
-        
+
         Args:
             url: URL to extract domain from
-            
+
         Returns:
             Base domain string
         """
@@ -102,17 +103,17 @@ class AllowScanner:
                 "Could not extract hostname from URL",
                 field="url",
                 value=url,
-                suggestion="Provide a URL with a valid hostname"
+                suggestion="Provide a URL with a valid hostname",
             )
         return hostname
 
     @log_scan_session
     async def run(self) -> ScanResult:
         """Execute all scan modules and return results.
-        
+
         Returns:
             ScanResult with all findings
-            
+
         Raises:
             AllowScannerError: If scan fails completely
         """
@@ -123,7 +124,7 @@ class AllowScanner:
         await http.start()
 
         try:
-            tasks: list = []
+            tasks: list[Any] = []
 
             if self.config.check_technologies:
                 tasks.append(self._run_tech(http))
@@ -150,16 +151,13 @@ class AllowScanner:
                 if isinstance(result, Exception):
                     logger.error(f"Scanner task {i} failed: {result}")
                     # Add error as vulnerability for visibility
-                    self.result.vulnerabilities.append(
-                        self._create_error_vulnerability(result, tasks[i].__name__)
-                    )
+                    self.result.vulnerabilities.append(self._create_error_vulnerability(result, tasks[i].__name__))
 
         except Exception as e:
             logger.error(f"Critical error during scan: {e}")
             raise AllowScannerError(
-                f"Scan failed: {e}",
-                suggestion="Check logs for details or try with --verbose flag"
-            )
+                f"Scan failed: {e}", suggestion="Check logs for details or try with --verbose flag"
+            ) from e
         finally:
             await http.close()
 
@@ -171,11 +169,11 @@ class AllowScanner:
 
     def _create_error_vulnerability(self, error: Exception, scanner_name: str) -> Vulnerability:
         """Create a vulnerability entry from an error.
-        
+
         Args:
             error: Exception that occurred
             scanner_name: Name of the scanner that failed
-            
+
         Returns:
             Vulnerability object representing the error
         """
@@ -281,7 +279,3 @@ class AllowScanner:
         except Exception as e:
             logger.error(f"Cookie scanner failed: {e}")
             raise
-
-
-# Import Vulnerability for type hints
-from .core.models import Vulnerability

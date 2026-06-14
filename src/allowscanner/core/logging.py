@@ -13,9 +13,10 @@ import json
 import logging
 import sys
 import uuid
+from collections.abc import Awaitable, Callable, MutableMapping
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # Default log format for console output
 DEFAULT_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s - %(message)s"
@@ -80,20 +81,26 @@ class StructuredFormatter(logging.Formatter):
         return super().format(record)
 
 
-class CorrelationLogAdapter(logging.LoggerAdapter):
+if TYPE_CHECKING:
+    _LoggerAdapterBase = logging.LoggerAdapter[logging.Logger]
+else:
+    _LoggerAdapterBase = logging.LoggerAdapter
+
+
+class CorrelationLogAdapter(_LoggerAdapterBase):
     """Logger adapter that adds correlation ID to all log messages."""
 
-    def process(self, msg: str, kwargs: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[Any, MutableMapping[str, Any]]:
         # Add correlation ID to extra fields
         extra = kwargs.get("extra", {})
-        extra["correlation_id"] = self.extra.get("correlation_id", "unknown")
+        extra["correlation_id"] = (self.extra or {}).get("correlation_id", "unknown")
         kwargs["extra"] = extra
         return msg, kwargs
 
 
 class AllowScannerLogger:
     """Main logging manager for AllowScanner.
-    
+
     Handles logger configuration, correlation IDs, and structured logging.
     """
 
@@ -150,7 +157,7 @@ class AllowScannerLogger:
 
         return logger
 
-    def get_logger(self) -> logging.LoggerAdapter:
+    def get_logger(self) -> logging.LoggerAdapter[logging.Logger]:
         """Get the logger adapter with correlation ID."""
         return self._adapter
 
@@ -191,7 +198,7 @@ def get_logger(
     correlation_id: str | None = None,
 ) -> AllowScannerLogger:
     """Get or create the global logger instance.
-    
+
     Args:
         name: Logger name (default: "allowscanner")
         level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -199,7 +206,7 @@ def get_logger(
         json_format: Use JSON structured logging
         console_output: Enable console output
         correlation_id: Optional correlation ID for session tracking
-    
+
     Returns:
         AllowScannerLogger instance
     """
@@ -218,12 +225,12 @@ def get_logger(
     return _logger
 
 
-def log_scan_session(func):
+def log_scan_session(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
     """Decorator to log scan session start and end."""
     import functools
 
     @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         logger = get_logger()
         correlation_id = str(uuid.uuid4())
         logger.set_correlation_id(correlation_id)

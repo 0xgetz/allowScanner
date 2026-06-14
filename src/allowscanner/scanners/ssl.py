@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
-from ..core.exceptions import NetworkError, SSLError, TimeoutError
+from ..core.exceptions import NetworkError, SSLError
 from ..core.logging import get_logger
 from ..core.models import CertificateInfo, Severity, Vulnerability
 
@@ -22,10 +22,10 @@ class SSLScanner:
 
     async def scan(self, url: str) -> tuple[CertificateInfo | None, list[Vulnerability]]:
         """Scan URL for SSL/TLS configuration.
-        
+
         Args:
             url: URL to scan (must be HTTPS)
-            
+
         Returns:
             Tuple of (certificate info, list of vulnerabilities)
         """
@@ -118,23 +118,27 @@ class SSLScanner:
                         cert_info.days_remaining = days_left
 
                         if days_left < 0:
-                            vulns.append(Vulnerability(
-                                name="Expired SSL Certificate",
-                                severity=Severity.CRITICAL,
-                                url=url,
-                                description=f"Certificate expired {abs(days_left)} days ago",
-                                recommendation="Renew the SSL certificate immediately",
-                                cwe="CWE-295",
-                            ))
+                            vulns.append(
+                                Vulnerability(
+                                    name="Expired SSL Certificate",
+                                    severity=Severity.CRITICAL,
+                                    url=url,
+                                    description=f"Certificate expired {abs(days_left)} days ago",
+                                    recommendation="Renew the SSL certificate immediately",
+                                    cwe="CWE-295",
+                                )
+                            )
                         elif days_left < 30:
-                            vulns.append(Vulnerability(
-                                name="SSL Certificate Expiring Soon",
-                                severity=Severity.MEDIUM,
-                                url=url,
-                                description=f"Certificate expires in {days_left} days",
-                                recommendation="Schedule certificate renewal",
-                                cwe="CWE-295",
-                            ))
+                            vulns.append(
+                                Vulnerability(
+                                    name="SSL Certificate Expiring Soon",
+                                    severity=Severity.MEDIUM,
+                                    url=url,
+                                    description=f"Certificate expires in {days_left} days",
+                                    recommendation="Schedule certificate renewal",
+                                    cwe="CWE-295",
+                                )
+                            )
                     except ValueError as e:
                         logger.warning(f"Failed to parse certificate date: {e}")
 
@@ -147,52 +151,54 @@ class SSLScanner:
                 if cipher:
                     weak = ["DES", "RC4", "NULL", "MD5", "EXPORT", "anon"]
                     if any(w in cipher[0] for w in weak):
-                        vulns.append(Vulnerability(
-                            name="Weak SSL Cipher",
-                            severity=Severity.HIGH,
-                            url=url,
-                            description=f"Weak cipher suite: {cipher[0]}",
-                            recommendation="Disable weak cipher suites on the server",
-                            cwe="CWE-326",
-                        ))
+                        vulns.append(
+                            Vulnerability(
+                                name="Weak SSL Cipher",
+                                severity=Severity.HIGH,
+                                url=url,
+                                description=f"Weak cipher suite: {cipher[0]}",
+                                recommendation="Disable weak cipher suites on the server",
+                                cwe="CWE-326",
+                            )
+                        )
 
                 # Check for weak protocols
                 proto = ssock.version() or ""
                 if proto in ("TLSv1", "TLSv1.1", "SSLv3", "SSLv2"):
-                    vulns.append(Vulnerability(
-                        name=f"Weak TLS Protocol: {proto}",
-                        severity=Severity.HIGH,
-                        url=url,
-                        description=f"Server supports deprecated protocol {proto}",
-                        recommendation="Disable TLS 1.0/1.1, only allow TLS 1.2+",
-                        cwe="CWE-326",
-                    ))
+                    vulns.append(
+                        Vulnerability(
+                            name=f"Weak TLS Protocol: {proto}",
+                            severity=Severity.HIGH,
+                            url=url,
+                            description=f"Server supports deprecated protocol {proto}",
+                            recommendation="Disable TLS 1.0/1.1, only allow TLS 1.2+",
+                            cwe="CWE-326",
+                        )
+                    )
 
                 logger.debug(f"SSL scan completed for {hostname}")
 
             finally:
                 # Clean up sockets
                 if ssock:
-                    try:
+                    with contextlib.suppress(Exception):
                         ssock.close()
-                    except Exception:
-                        pass
                 elif sock:
-                    try:
+                    with contextlib.suppress(Exception):
                         sock.close()
-                    except Exception:
-                        pass
 
         except ssl.SSLCertVerificationError as e:
             logger.warning(f"SSL certificate verification failed for {hostname}: {e}")
-            vulns.append(Vulnerability(
-                name="SSL Certificate Verification Failed",
-                severity=Severity.HIGH,
-                url=url,
-                description=str(e),
-                recommendation="Fix certificate chain or install valid certificate",
-                cwe="CWE-295",
-            ))
+            vulns.append(
+                Vulnerability(
+                    name="SSL Certificate Verification Failed",
+                    severity=Severity.HIGH,
+                    url=url,
+                    description=str(e),
+                    recommendation="Fix certificate chain or install valid certificate",
+                    cwe="CWE-295",
+                )
+            )
         except ssl.SSLError as e:
             logger.error(f"SSL error for {hostname}: {e}")
             raise SSLError(
@@ -200,8 +206,8 @@ class SSLScanner:
                 host=hostname,
                 port=443,
                 original_error=e,
-                suggestion="Check SSL/TLS configuration on the server"
-            )
+                suggestion="Check SSL/TLS configuration on the server",
+            ) from e
         except builtins.TimeoutError as e:
             logger.warning(f"Connection timeout for {hostname}: {e}")
             # Return None gracefully like ConnectionRefusedError
@@ -215,14 +221,10 @@ class SSLScanner:
                 host=hostname,
                 port=443,
                 original_error=e,
-                suggestion="Check network connectivity"
-            )
+                suggestion="Check network connectivity",
+            ) from e
         except Exception as e:
             logger.error(f"Unexpected error during SSL scan for {hostname}: {e}")
-            raise SSLError(
-                "Unexpected error during SSL scan",
-                host=hostname,
-                original_error=e
-            )
+            raise SSLError("Unexpected error during SSL scan", host=hostname, original_error=e) from e
 
         return cert_info if cert_info.issuer else None, vulns
